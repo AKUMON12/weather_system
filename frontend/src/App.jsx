@@ -1,6 +1,6 @@
 import { useState, useEffect} from 'react'
 import axios from 'axios';
-import './App.css'; // Keep the default index.css for basic styling
+import './index.css'; // Keep the default index.css for basic styling
 
 function App() {
   const [backendMessage, setBackendMessage] = useState('Connecting to Backend...');
