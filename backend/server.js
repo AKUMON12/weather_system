@@ -9,6 +9,10 @@ const mysql = require('mysql2/promise'); // Use the 'promise' wrapper for async/
 // 7. Axios for making HTTP requests to external APIs and Integrating Weather API and Caching Logic
 const axios = require('axios');
 
+// 9. These will handle creating users and verifying them.
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+
 // 2. Server Initialization
 const app = express();
 const PORT = process.env.PORT || 5000; // Use port from .env or default to 5000
@@ -117,7 +121,7 @@ app.get('/api/weather/:city', async (req, res) => {
         );
 
         res.json({ source: 'api', data: weatherData });
-        
+
     } catch (error) {
         console.error("Weather API Error:", error.message);
         
@@ -127,6 +131,62 @@ app.get('/api/weather/:city', async (req, res) => {
             message: "Failed to fetch weather data",
             error: error.response ? error.response.data.message : error.message
         });
+    }
+});
+
+
+// 10. Add Auth Routes to server.js
+// --- I. REGISTER ROUTE ---
+app.post('/api/register', async (req, res) => {
+    const { username, email, password } = req.body;
+
+    try {
+        // Hash the password before saving
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        // Insert into MySQL
+        const [result] = await dbPool.query(
+            'INSERT INTO users (username, email, password_hash) VALUES (?, ?, ?)',
+            [username, email, hashedPassword]
+        );
+
+        res.status(201).json({ message: "User registered successfully!" });
+    } catch (error) {
+        res.status(500).json({ error: "Registration failed. Email/Username might already exist." });
+    }
+});
+
+// --- II. LOGIN ROUTE ---
+app.post('/api/login', async (req, res) => {
+    const { email, password } = req.body;
+
+    try {
+        // a. Find user by email
+        const [users] = await dbPool.query('SELECT * FROM users WHERE email = ?', [email]);
+        
+        if (users.length === 0) return res.status(404).json({ error: "User not found" });
+
+        const user = users[0];
+
+        // b. Check password
+        const isMatch = await bcrypt.compare(password, user.password_hash);
+        if (!isMatch) return res.status(401).json({ error: "Invalid credentials" });
+
+        // c. Create JWT Token
+        const token = jwt.sign(
+            { id: user.user_id, username: user.username },
+            process.env.JWT_SECRET,
+            { expiresIn: '1h' }
+        );
+
+        res.json({
+            token,
+            user: { id: user.user_id, username: user.username }
+        });
+
+    } catch (error) {
+        res.status(500).json({ error: "Login failed" });
     }
 });
 
