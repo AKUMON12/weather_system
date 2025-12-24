@@ -6,6 +6,9 @@ const express = require('express');
 const cors = require('cors');
 const mysql = require('mysql2/promise'); // Use the 'promise' wrapper for async/await support
 
+// 7. Axios for making HTTP requests to external APIs and Integrating Weather API and Caching Logic
+const axios = require('axios');
+
 // 2. Server Initialization
 const app = express();
 const PORT = process.env.PORT || 5000; // Use port from .env or default to 5000
@@ -63,6 +66,69 @@ app.get('/', async (req, res) => {
     }
 });
 
+// 8. --- Weather Search Route with Caching ---
+app.get('/api/weather/:city', async (req, res) => {
+    const city = req.params.city.toLowerCase(); // Standardize city name to lowercase
+    const apiKey = process.env.WEATHER_API_KEY; // Your weather API key from .env
+    const baseUrl = process.env.WEATHER_API_BASE_URL; // Base URL for the weather API
+
+    try {
+        // I. CHECK CACHE: Check if we have fresh data in MySQL
+        const [cached] = await dbPool.query(
+            'SELECT * FROM cached_weather WHERE location_key = ? AND expires_at > NOW()',
+            [city]
+        );
+
+        if (cached.length > 0) {
+            console.log(`📦 Cache Hit for: ${city}`);
+            // Data in MySQL is stored as JSON string; mysql2 automatically parses it if using JSON column
+            return res.json({ source: 'database', data: cached[0].weather_data });
+        }
+
+        // II. CACHE MISS: Fetch from External API
+        console.log(`☁️ Cache Miss. Fetching from API for: ${city}`);
+        const response = await axios.get(`${baseUrl}/forecast`, {
+            params: {
+                q: city,
+                appid: apiKey,
+                units: 'metric' // We'll handle unit switching in the frontend later
+            }
+        });
+
+        // OpenWeatherMap's /forecast returns an object where the list of data is in response.data.list
+        const weatherData = response.data;
+
+        // III. UPDATE CACHE: Store/Update the data in MySQL
+        // We will set the cache to expire in 10 minutes
+        const EXPIRY_MINUTES = 10;
+        const expiresAt = new Date();
+        expiresAt.setMinutes(expiresAt.getMinutes() + EXPIRY_MINUTES);
+
+        /**
+         * SQL Trick: ON DUPLICATE KEY UPDATE
+         * If the city already exists in the cache (but was expired), it updates it.
+         * If it doesn't exist, it inserts a new record.
+         */
+        await dbPool.query(
+            `INSERT INTO cached_weather (location_key, weather_data, expires_at) 
+             VALUES (?, ?, ?) 
+             ON DUPLICATE KEY UPDATE weather_data = VALUES(weather_data), expires_at = VALUES(expires_at)`,
+            [city, JSON.stringify(weatherData), expiresAt]
+        );
+
+        res.json({ source: 'api', data: weatherData });
+        
+    } catch (error) {
+        console.error("Weather API Error:", error.message);
+        
+        // Handle city not found (404) or API key issues (401)
+        const statusCode = error.response ? error.response.status : 500;
+        res.status(statusCode).json({
+            message: "Failed to fetch weather data",
+            error: error.response ? error.response.data.message : error.message
+        });
+    }
+});
 
 // 6. Start the Server
 app.listen(PORT, () => {
