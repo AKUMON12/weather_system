@@ -17,6 +17,23 @@ const jwt = require('jsonwebtoken');
 const app = express();
 const PORT = process.env.PORT || 5000; // Use port from .env or default to 5000
 
+
+// 11. Implementing Middleware (Managing favorite cities)
+// --- AUTH MIDDLEWARE ---
+const authenticateToken = (req, res, next) => {
+    // Look for the token in the 'Authorization' header
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // Format: "Bearer <token>"
+
+    if (!token) return res.status(401).json({ error: "Access denied. No token provided." });
+
+    jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+        if (err) return res.status(403).json({ error: "Invalid or expired token." });
+        req.user = user; // Attach user info (id, username) to the request object
+        next(); // Move to the next function (the actual route logic)
+    });
+};
+
 // 3. Middleware Configuration
 // CORS: Allows requests from different origins (e.g., frontend running on port 3000)
 app.use(cors()); 
@@ -49,6 +66,7 @@ try {
     process.exit(1); 
 }
 
+
 // 5. Test Route (Verification of Server and Database Status)
 // The root endpoint to check if the server is running and database is connected.
 app.get('/', async (req, res) => {
@@ -69,6 +87,7 @@ app.get('/', async (req, res) => {
         });
     }
 });
+
 
 // 8. --- Weather Search Route with Caching ---
 app.get('/api/weather/:city', async (req, res) => {
@@ -135,7 +154,7 @@ app.get('/api/weather/:city', async (req, res) => {
 });
 
 
-// 10. Add Auth Routes to server.js
+// 10. Add Auth Routes to server.js ---
 // --- I. REGISTER ROUTE ---
 app.post('/api/register', async (req, res) => {
     const { username, email, password } = req.body;
@@ -192,6 +211,58 @@ app.post('/api/login', async (req, res) => {
         res.status(500).json({ error: "Login failed" });
     }
 });
+// --- END OF AUTH ROUTES ---
+
+
+// 12. Add the Favorites Routes ---
+// --- I. SAVE A FAVORITE CITY ---
+app.post('/api/favorites', authenticateToken, async (req, res) => {
+    const { city_name, lat, lon } = req.body;
+    const userId = req.user.id; // Get ID from the verified token
+
+    try {
+        await dbPool.query(
+            'INSERT INTO user_favorites (user_id, city_name, latitude, longitude) VALUES (?, ?, ?, ?)',
+            [userId, city_name, lat, lon]
+        );
+        res.status(201).json({ message: "City added to favorites!" });
+    } catch (error) {
+        res.status(500).json({ error: "Failed to save favorite. Is it already added?" });
+    }
+});
+
+// --- II. GET USER'S FAVORITES ---
+app.get('/api/favorites', authenticateToken, async (req, res) => {
+    const userId = req.user.id;
+
+    try {
+        const [favorites] = await dbPool.query(
+            'SELECT * FROM user_favorites WHERE user_id = ?', 
+            [userId]
+        );
+        res.json(favorites);
+    } catch (error) {
+        res.status(500).json({ error: "Could not fetch favorites." });
+    }
+});
+
+// --- III. DELETE A FAVORITE ---
+app.delete('/api/favorites/:id', authenticateToken, async (req, res) => {
+    const favoriteId = req.params.id;
+    const userId = req.user.id;
+
+    try {
+        await dbPool.query(
+            'DELETE FROM user_favorites WHERE favorite_id = ? AND user_id = ?',
+            [favoriteId, userId]
+        );
+        res.json({ message: "Favorite removed." });
+    } catch (error) {
+        res.status(500).json({ error: "Delete failed." });
+    }
+});
+// --- END OF FAVORITES ROUTES ---
+
 
 // 6. Start the Server
 app.listen(PORT, () => {
