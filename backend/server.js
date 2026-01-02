@@ -153,6 +153,9 @@ app.post('/api/register', async (req, res) => {
 
         res.status(201).json({ message: "User registered successfully!" });
     } catch (error) {
+        // This will show the real error in your VS Code / Terminal console
+        console.error("DEBUG REGISTRATION ERROR:", error);
+
         res.status(500).json({ error: "Registration failed. Email/Username might already exist." });
     }
 });
