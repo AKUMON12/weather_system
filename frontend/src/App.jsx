@@ -1,110 +1,207 @@
-import { useState } from "react";
+// UPDATED to include useCallback
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import "./index.css";
 import WeatherChart from "./WeatherChart.jsx";
+
+// Make sure you created this file in Step 8
+import Auth from "./Auth.jsx";
 
 function App() {
   const [city, setCity] = useState("");
   const [weather, setWeather] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [favorites, setFavorites] = useState([]);
+
+  // 1. Check for existing token on load (Persistent Login)
+  // UPDATED: use try-catch to handle JSON parsing errors or lazy state initialization
+  const [user, setUser] = useState(() => {
+    try {
+      const savedUser = localStorage.getItem("user");
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch {
+      localStorage.removeItem("user");
+      return null;
+    }
+  });
 
   const API_URL = import.meta.env.VITE_API_BASE_URL;
 
-  const fetchWeather = async (e) => {
-    e.preventDefault();
-    if (!city) return;
+  // 2. Fetch Favorites when user is logged in
+  // UPDATED to Move the logic into the effect, not the function:
+  // inside App()
+  const fetchFavorites = useCallback(async () => {
+    if (!user) return;
 
-    setLoading(true);
-    setError("");
-    setWeather(null);
-
+    const token = localStorage.getItem("token");
     try {
-      const response = await axios.get(`${API_URL}/api/weather/${city}`);
-      setWeather(response.data.data);
-      console.log("Source:", response.data.source);
+      const res = await axios.get(`${API_URL}/api/favorites`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setFavorites(res.data);
     } catch (err) {
-      setError(
-        err.response?.data?.error || "City not found. Please try again."
+      console.error("Error fetching favorites:", err);
+    }
+  }, [user, API_URL]); // <- dependencies
+
+  // Call it when the component mounts or user changes
+  // UPDATED to use the fetchFavorites function defined above
+  useEffect(() => {
+    if (!user) return;
+
+    // define async function inside effect
+    const loadFavorites = async () => {
+      const token = localStorage.getItem("token");
+      try {
+        const res = await axios.get(`${API_URL}/api/favorites`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setFavorites(res.data); // this runs after the async fetch, not synchronously
+      } catch (err) {
+        console.error("Error fetching favorites:", err);
+      }
+    };
+
+    loadFavorites(); // call async function
+  }, [user, API_URL]);
+
+  // 3. Save a City to Favorites
+  const saveFavorite = async () => {
+    const token = localStorage.getItem("token");
+    try {
+      await axios.post(
+        `${API_URL}/api/favorites`,
+        {
+          city_name: weather.city.name,
+          lat: weather.city.coord.lat,
+          lon: weather.city.coord.lon,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
       );
-    } finally {
-      setLoading(false);
+      await fetchFavorites(); // Refresh list
+    } catch (err) {
+      alert("Already in favorites!", err);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-blue-50 flex flex-col items-center py-10 font-sans">
-      <h1 className="text-4xl font-bold text-blue-900 mb-8">
-        🌤️ Weather Finder
-      </h1>
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setUser(null);
+    setWeather(null);
+  };
 
-      {/* Search Form */}
-      <form onSubmit={fetchWeather} className="flex gap-2 mb-8">
-        <input
-          type="text"
-          placeholder="Enter city name (e.g., Manila)"
-          className="px-4 py-2 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-          value={city}
-          onChange={(e) => setCity(e.target.value)}
+  const fetchWeather = async (e, cityName = city) => {
+    if (e) e.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const response = await axios.get(`${API_URL}/api/weather/${cityName}`);
+      setWeather(response.data.data);
+    } catch (err) {
+      setError("City not found.", err);
+    }
+    setLoading(false);
+  };
+
+  if (!user)
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <Auth
+          onLoginSuccess={(userData) => {
+            setUser(userData);
+            localStorage.setItem("user", JSON.stringify(userData));
+          }}
         />
+      </div>
+    );
+
+  return (
+    <div className="min-h-screen bg-blue-50 p-6 font-sans">
+      {/* Header */}
+      <div className="flex justify-between items-center max-w-6xl mx-auto mb-8">
+        <h1 className="text-3xl font-bold text-blue-900">
+          🌤️ {user.username}'s Weather
+        </h1>
         <button
-          type="submit"
-          className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-md"
+          onClick={handleLogout}
+          className="text-red-500 font-semibold underline"
         >
-          {loading ? "Searching..." : "Search"}
+          Logout
         </button>
-      </form>
+      </div>
 
-      {error && <p className="text-red-500 mb-4 font-semibold">{error}</p>}
-
-      {/* Weather Display Content */}
-      {weather && (
-        <div className="flex flex-col items-center w-full max-w-4xl px-4 animate-fade-in">
-          {/* 1. Main Weather Card */}
-          <div className="bg-white p-8 rounded-2xl shadow-xl w-80 text-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">
-              {weather.city?.name}, {weather.city?.country}
-            </h2>
-
-            <div className="my-4">
-              <img
-                src={`https://openweathermap.org/img/wn/${weather.list[0].weather[0].icon}@2x.png`}
-                alt="weather-icon"
-                className="mx-auto"
-              />
-              <p className="text-5xl font-extrabold text-blue-600">
-                {Math.round(weather.list[0].main.temp)}°C
-              </p>
-              <p className="text-gray-500 capitalize mt-2">
-                {weather.list[0].weather[0].description}
-              </p>
-            </div>
-
-            {/* FIXED: Bottom Grid paths updated to weather.list[0] */}
-            <div className="grid grid-cols-2 gap-4 mt-6 border-t pt-4 text-sm text-gray-600">
-              <div>
-                <p className="font-bold">Humidity</p>
-                <p>{weather.list[0].main.humidity}%</p>
-              </div>
-              <div>
-                <p className="font-bold">Wind</p>
-                <p>{weather.list[0].wind.speed} m/s</p>
-              </div>
-            </div>
-          </div>
-
-          {/* 2. Chart Section */}
-          <WeatherChart data={weather} />
+      <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-6">
+        {/* Sidebar: Favorites */}
+        <div className="bg-white p-4 rounded-xl shadow-md h-fit">
+          <h3 className="font-bold mb-4 border-b pb-2 text-gray-700">
+            ⭐ Favorites
+          </h3>
+          {favorites.map((fav) => (
+            <button
+              key={fav.favorite_id}
+              onClick={() => fetchWeather(null, fav.city_name)}
+              className="block w-full text-left p-2 hover:bg-blue-100 rounded text-sm mb-1"
+            >
+              📍 {fav.city_name}
+            </button>
+          ))}
         </div>
-      )}
+
+        {/* Main Section: Search & Dashboard */}
+        <div className="md:col-span-3 flex flex-col items-center">
+          <form
+            onSubmit={fetchWeather}
+            className="flex gap-2 mb-8 w-full max-w-md"
+          >
+            <input
+              type="text"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              placeholder="Search city..."
+              className="flex-1 px-4 py-2 rounded-lg border shadow-sm"
+            />
+            <button
+              type="submit"
+              disabled={loading}
+              className={`px-6 py-2 rounded-lg shadow-md text-white
+              ${loading ? "bg-gray-400 cursor-not-allowed" : "bg-blue-600"}`}
+            >
+              {loading ? "Loading..." : "Search"}
+            </button>
+          </form>
+
+          {error && <p className="text-red-500 mt-2 text-sm">{error}</p>}
+
+          {weather && (
+            <div className="w-full flex flex-col items-center animate-fade-in">
+              <div className="bg-white p-8 rounded-2xl shadow-xl w-80 text-center relative">
+                <button
+                  onClick={saveFavorite}
+                  className="absolute top-4 right-4 text-2xl"
+                >
+                  ⭐
+                </button>
+                <h2 className="text-2xl font-bold">{weather.city.name}</h2>
+                <p className="text-5xl font-extrabold text-blue-600 my-4">
+                  {Math.round(weather.list[0].main.temp)}°C
+                </p>
+                <WeatherChart data={weather} />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
 
 export default App;
 
-{
-  /*
+/*
 Understanding the Code
 
 useState:
@@ -124,4 +221,3 @@ OpenWeatherMap provides weather icons.
 The icon is loaded dynamically using the icon code
 (weather.weather[0].icon) in the image URL.
 */
-}
