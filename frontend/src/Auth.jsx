@@ -31,14 +31,20 @@ const Auth = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="bg-white p-6 rounded-xl shadow-md w-80">
-      <h2 className="text-xl font-bold mb-4">
-        {isLogin ? "Login" : "Register"}
-      </h2>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+    <div className="glass-card p-10 rounded-[2.5rem] w-full max-w-md fade-up text-white">
+      <div className="text-center mb-10">
+        <h2 className="text-4xl font-bold mb-2">
+          {isLogin ? "Welcome Back" : "Create Account"}
+        </h2>
+        <p className="text-slate-400 text-sm">
+          Access real-time weather data anywhere.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         {!isLogin && (
           <input
-            className="border p-2 rounded"
+            className="bg-white/5 border border-white/10 p-4 rounded-2xl outline-none focus:border-blue-500/50 transition"
             type="text"
             placeholder="Username"
             onChange={(e) =>
@@ -47,30 +53,39 @@ const Auth = ({ onLoginSuccess }) => {
           />
         )}
         <input
-          className="border p-2 rounded"
+          className="bg-white/5 border border-white/10 p-4 rounded-2xl outline-none focus:border-blue-500/50 transition"
           type="email"
-          placeholder="Email"
+          placeholder="Email Address"
           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
         />
         <input
-          className="border p-2 rounded"
+          className="bg-white/5 border border-white/10 p-4 rounded-2xl outline-none focus:border-blue-500/50 transition"
           type="password"
           placeholder="Password"
           onChange={(e) =>
             setFormData({ ...formData, password: e.target.value })
           }
         />
-        <button className="bg-blue-600 text-white p-2 rounded hover:bg-blue-700">
-          {isLogin ? "Sign In" : "Sign Up"}
+
+        <button className="neon-button py-4 rounded-2xl font-bold text-white mt-4 shadow-lg">
+          {isLogin ? "SIGN IN" : "GET STARTED"}
         </button>
       </form>
-      <p
-        className="mt-4 text-sm text-blue-500 cursor-pointer"
-        onClick={() => setIsLogin(!isLogin)}
-      >
-        {isLogin ? "Need an account? Register" : "Have an account? Login"}
+
+      <p className="mt-8 text-center text-sm text-slate-400">
+        {isLogin ? "Don't have an account?" : "Already a member?"}
+        <button
+          onClick={() => setIsLogin(!isLogin)}
+          className="ml-2 text-blue-400 font-bold hover:underline"
+        >
+          {isLogin ? "Register now" : "Login here"}
+        </button>
       </p>
-      {msg && <p className="mt-2 text-red-500 text-xs">{msg}</p>}
+      {msg && (
+        <p className="mt-4 text-red-400 text-center text-xs bg-red-500/10 py-2 rounded-lg">
+          {msg}
+        </p>
+      )}
     </div>
   );
 };
