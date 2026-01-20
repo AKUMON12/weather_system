@@ -15,6 +15,10 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 /*  ---  */
 
+// NEED SOME RESOLUTIONS FOR THESE ERRORS:
+// Error 1: "Cascading render detected" due to useEffect setting state after initial render
+// Error 2: "toggleDarkMode is defined but never used" - ESLint warning
+// Error 3: "State update on unmounted component" when fetching favorites after login
 
 const queryClient = new QueryClient();
 
