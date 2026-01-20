@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import "./index.css";
 import WeatherChart from "./components/dashboard/WeatherChart.js";
-import Auth from "./components/auth/Auth.js";
+import Auth from "./components/auth/AuthCard.js";
 
 // Better UI in this part:
 /*  ---  */
@@ -19,17 +19,18 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 
+interface Favorite {
+  favorite_id: number;
+  city_name: string;
+}
+
 function App() {
   const API_URL = import.meta.env.VITE_API_BASE_URL;
 
   // 1. LAZY INITIALIZERS: Load from localStorage immediately (Fixes Error 1 & 3)
-  const [user, setUser] = useState(() => {
-    try {
-      const savedUser = localStorage.getItem("user");
-      return savedUser ? JSON.parse(savedUser) : null;
-    } catch {
-      return null;
-    }
+  const [user, setUser] = useState<any>(() => {
+    const savedUser = localStorage.getItem("user");
+    return savedUser ? JSON.parse(savedUser) : null;
   });
 
   const [darkMode, setDarkMode] = useState(() => {
@@ -37,10 +38,8 @@ function App() {
   });
 
   const [city, setCity] = useState("");
-  const [weather, setWeather] = useState(null);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [favorites, setFavorites] = useState([]);
+  const [weather, setWeather] = useState<any>(null); // Allow any object instead of just null
+  const [favorites, setFavorites] = useState<Favorite[]>([]); // Array of Favorite objects
 
   // 2. USE CALLBACK: Memoize the fetch function
   const fetchFavorites = useCallback(async () => {
@@ -94,6 +93,7 @@ function App() {
   };
 
   const saveFavorite = async () => {
+    if (!weather) return; // Fixes "possibly null" error
     const token = localStorage.getItem("token");
     try {
       await axios.post(

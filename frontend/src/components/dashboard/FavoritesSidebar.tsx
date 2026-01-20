@@ -39,7 +39,7 @@ const FavoritesSidebar = ({ favorites, selectedCity, onSelectCity }: FavoritesSi
     <div className="glass-card p-4 h-full">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-display text-lg font-semibold text-foreground">Favorites</h3>
-        <button className="p-2 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 transition-colors">
+        <button aria-label="Add new favorite city" title="Add Favorite" className="p-2 rounded-lg bg-primary/20 text-primary hover:bg-primary/30 transition-colors">
           <Plus className="w-4 h-4" />
         </button>
       </div>

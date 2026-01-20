@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import InteractiveBackground from '@/components/backgrounds/InteractiveBackground';
 import SearchBar from '@/components/dashboard/SearchBar';
-import WeatherHero from '@/components/dashboard/WeatherHero';
+import WeatherHero from '@/components/dashboard/WeatherChart';
 import FavoritesSidebar from '@/components/dashboard/FavoritesSidebar';
 import InsightsSidebar from '@/components/dashboard/InsightsSidebar';
 import { Cloud, LogOut } from 'lucide-react';
