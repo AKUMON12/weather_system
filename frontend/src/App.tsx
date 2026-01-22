@@ -12,6 +12,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import NotFound from "./pages/NotFound";
 
+import { toast } from "sonner";
+
 const queryClient = new QueryClient();
 
 interface Favorite {
@@ -35,10 +37,12 @@ function App() {
   const [city, setCity] = useState("");
   const [weather, setWeather] = useState<any>(null);
   const [favorites, setFavorites] = useState<Favorite[]>([]);
-
-  // FIXED: Re-added missing state declarations
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [searchId, setSearchId] = useState(0);
+
+  // 1. Add a new state specifically for the display logic
+  const [displayWeather, setDisplayWeather] = useState<any>(null);
 
   // 2. MEMOIZED FETCHING
   const fetchFavorites = useCallback(async () => {
@@ -74,39 +78,81 @@ function App() {
     setWeather(null);
   };
 
+  // 2. Updated fetchWeather function
   const fetchWeather = async (e: any, cityName = city) => {
     if (e) e.preventDefault();
+    const targetCity = cityName?.trim();
+
+    if (!targetCity) {
+      toast.warning("Please enter a city name");
+      return;
+    }
+
     setLoading(true);
     setError("");
+    setDisplayWeather(null);
+
     try {
-      const response = await axios.get(`${API_URL}/api/weather/${cityName}`);
-      setWeather(response.data.data);
+      const response = await axios.get(`${API_URL}/api/weather/${targetCity}`);
+      const newData = response.data.data;
+
+      setTimeout(() => {
+        setWeather(newData);
+        setDisplayWeather(newData);
+        setLoading(false);
+        // Optional: Add a success toast
+        toast.success(`Atmospheric data for ${newData.city.name} synced.`);
+      }, 500); // Simulate delay for better UX
+
+      setCity("");
     } catch (err) {
-      setError("City not found.");
+      // --- THIS IS THE PART YOU ASKED FOR ---
+      toast.error("Atmospheric Data Unavailable", {
+        description: `Could not locate "${targetCity}". Please check the spelling.`,
+      });
+      setLoading(false);
+      // ---------------------------------------
     }
-    setLoading(false);
   };
 
-  const saveFavorite = async () => {
-    if (!weather) return;
+  const toggleFavorite = async () => {
+    if (!weather || !weather.city) return;
     const token = localStorage.getItem("token");
+
+    const existingFav = favorites.find(f =>
+      f.city_name.toLowerCase() === weather.city.name.toLowerCase()
+    );
+
     try {
-      await axios.post(
-        `${API_URL}/api/favorites`,
-        {
+      if (existingFav) {
+        await axios.delete(`${API_URL}/api/favorites/${existingFav.favorite_id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+      } else {
+        await axios.post(`${API_URL}/api/favorites`, {
           city_name: weather.city.name,
           lat: weather.city.coord.lat,
           lon: weather.city.coord.lon,
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+        }, { headers: { Authorization: `Bearer ${token}` } });
+      }
       fetchFavorites();
     } catch (err) {
-      alert("Already in favorites!");
+      console.error("Action failed", err);
     }
   };
 
-  // 4. RENDER LOGIC
+  const removeFavoriteById = async (id: number) => {
+    const token = localStorage.getItem("token");
+    try {
+      await axios.delete(`${API_URL}/api/favorites/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      fetchFavorites();
+    } catch (err) {
+      console.error("Delete failed", err);
+    }
+  };
+
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -116,12 +162,8 @@ function App() {
           <Routes>
             <Route path="/" element={
               !user ? (
-                /* We use bg-transparent here so we can see the -z-10 canvas behind it */
                 <div className="relative min-h-screen bg-transparent flex items-center justify-center p-4 overflow-hidden">
-
                   <InteractiveBackground />
-
-                  {/* This container holds the login card and stays above the stars */}
                   <div className="relative z-10 w-full max-w-md animate-fade-in">
                     <Auth onAuthSuccess={(userData) => {
                       setUser(userData);
@@ -130,15 +172,13 @@ function App() {
                   </div>
                 </div>
               ) : (
-                // inside App.tsx return block...
-                <div className={`min-h-screen p-6 transition-all duration-700 font-sans ${weather?.list[0].weather[0].main.includes('Rain') ? 'theme-rainy gradient-rainy' :
-                  weather?.list[0].weather[0].main.includes('Clear') ? 'theme-sunny gradient-sunny' : 'gradient-night'
+                <div className={`min-h-screen p-6 transition-all duration-700 font-sans ${weather?.list?.[0]?.weather?.[0]?.main?.includes('Rain') ? 'theme-rainy gradient-rainy' :
+                  weather?.list?.[0]?.weather?.[0]?.main?.includes('Clear') ? 'theme-sunny gradient-sunny' : 'gradient-night'
                   }`}>
                   <div className="max-w-6xl mx-auto">
-                    {/* Header with Glassmorphism */}
                     <header className="glass-card p-6 mb-8 flex justify-between items-center animate-fade-in">
                       <h1 className="text-4xl font-black gradient-text uppercase tracking-tighter">
-                        🌤️ {user.username}'s Sky
+                        🌤️ {user?.username}'s Sky {weather?.city?.name ? `- ${weather.city.name}` : ''}
                       </h1>
                       <div className="flex gap-4">
                         <button onClick={toggleDarkMode} className="p-3 glass-card-subtle hover-lift">
@@ -151,21 +191,31 @@ function App() {
                     </header>
 
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                      {/* Sidebar - Using your .glass-card class */}
+                      {/* Sidebar */}
                       <aside className="glass-card p-6 h-fit sticky top-6">
                         <h3 className="font-bold mb-6 text-primary border-b border-white/10 pb-2 uppercase tracking-widest text-xs">
                           ⭐ Favorites
                         </h3>
                         <div className="space-y-2 custom-scrollbar max-h-[400px] overflow-y-auto">
                           {favorites.map((fav) => (
-                            <button
-                              key={fav.favorite_id}
-                              onClick={() => fetchWeather(null, fav.city_name)}
-                              className="block w-full text-left p-3 rounded-xl glass-card-subtle hover-lift text-sm transition-all"
-                            >
-                              📍 {fav.city_name}
-                            </button>
+                            <div key={fav.favorite_id} className="group flex items-center gap-2">
+                              <button
+                                onClick={() => fetchWeather(null, fav.city_name)}
+                                className="flex-1 text-left p-3 rounded-xl glass-card-subtle hover-lift text-sm transition-all"
+                              >
+                                📍 {fav.city_name}
+                              </button>
+                              <button
+                                onClick={() => removeFavoriteById(fav.favorite_id)}
+                                className="opacity-0 group-hover:opacity-100 p-2 text-white/40 hover:text-red-400 transition-all"
+                              >
+                                ✕
+                              </button>
+                            </div>
                           ))}
+                          {favorites.length === 0 && (
+                            <p className="text-xs text-white/30 text-center py-4">No saved locations</p>
+                          )}
                         </div>
                       </aside>
 
@@ -174,32 +224,56 @@ function App() {
                         <form onSubmit={fetchWeather} className="flex gap-3 mb-12">
                           <input
                             type="text"
+                            id="city-search"       // 👈 Fixes "Missing ID"
+                            name="city-search"     // 👈 Fixes "Missing Name"
+                            autoComplete="off"     // 👈 Fixes "Missing Autocomplete" (use "off" for search bars)
                             value={city}
                             onChange={(e) => setCity(e.target.value)}
                             placeholder="Search atmospheric data..."
                             className="flex-1 px-6 py-4 glass-card bg-white/5 border-white/10 neon-focus text-white placeholder:text-white/30"
                           />
-                          <button disabled={loading} className="glass-card px-8 py-4 bg-primary/20 hover:bg-primary/40 border-primary/50 neon-glow transition-all font-bold">
-                            {loading ? "..." : "SCAN"}
+                          <button
+                            disabled={loading}
+                            type="submit"
+                            className={`glass-card px-8 py-4 border-primary/50 transition-all font-bold flex items-center gap-2 ${loading
+                              ? "bg-primary/10 cursor-not-allowed opacity-70"
+                              : "bg-primary/20 hover:bg-primary/40 neon-glow"
+                              }`}
+                          >
+                            {loading ? (
+                              <>
+                                <span className="animate-spin text-lg">⚙️</span>
+                                SCANNING...
+                              </>
+                            ) : (
+                              "SCAN"
+                            )}
                           </button>
                         </form>
 
-                        {weather && (
-                          <div className="animate-slide-up">
+                        {displayWeather && displayWeather.city ? (
+                          <div className="animate-slide-up" key={`${displayWeather.city.name}-${searchId}`}>
                             <div className="glass-card p-10 relative overflow-hidden">
-                              {/* This pulls from your WeatherChart.tsx */}
                               <WeatherChart
                                 weather={{
-                                  city: weather.city.name,
-                                  country: weather.city.country || "", // 👈 Add this line
-                                  temperature: weather.list[0].main.temp,
-                                  condition: weather.list[0].weather[0].description
+                                  city: displayWeather.city.name,
+                                  country: displayWeather.city.country || "",
+                                  temperature: displayWeather.list?.[0]?.main?.temp || 0,
+                                  condition: displayWeather.list?.[0]?.weather?.[0]?.description || "N/A"
                                 }}
-                                isFavorite={favorites.some(f => f.city_name === weather.city.name)}
-                                onToggleFavorite={saveFavorite}
-                                forecastData={weather}
+                                isFavorite={favorites.some(f => f.city_name.toLowerCase() === displayWeather.city.name.toLowerCase())}
+                                onToggleFavorite={toggleFavorite}
+                                forecastData={displayWeather}
                               />
                             </div>
+                          </div>
+                        ) : (
+                          <div className="glass-card p-20 text-center opacity-40">
+                            {loading ? (
+                              <p className="text-xl animate-pulse">RE-SCANNING ATMOSPHERE...</p>
+                            ) : (
+                              <p className="text-xl italic">Ready for Scanning...</p>
+                            )}
                           </div>
                         )}
                       </main>
