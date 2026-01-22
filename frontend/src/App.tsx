@@ -116,12 +116,12 @@ function App() {
           <Routes>
             <Route path="/" element={
               !user ? (
-                /* Change the line below to use your atmospheric classes */
-                <div className="relative min-h-screen bg-background gradient-night flex items-center justify-center p-4 overflow-hidden">
-                  {/* This renders the stars/particles */}
+                /* We use bg-transparent here so we can see the -z-10 canvas behind it */
+                <div className="relative min-h-screen bg-transparent flex items-center justify-center p-4 overflow-hidden">
+
                   <InteractiveBackground />
 
-                  {/* Content wrapper with z-index to stay above the background */}
+                  {/* This container holds the login card and stays above the stars */}
                   <div className="relative z-10 w-full max-w-md animate-fade-in">
                     <Auth onAuthSuccess={(userData) => {
                       setUser(userData);
