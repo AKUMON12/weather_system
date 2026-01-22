@@ -16,14 +16,14 @@ interface InteractiveBackgroundProps {
   particleCount?: number;
 }
 
-const InteractiveBackground = ({ 
+const InteractiveBackground = ({
   weatherCondition = 'night',
-  particleCount = 80 
+  particleCount = 80
 }: InteractiveBackgroundProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const particlesRef = useRef<Particle[]>([]);
   const mouseRef = useRef({ x: 0, y: 0 });
-  const animationRef = useRef<number | null>(null);
+  const animationRef = useRef<number>(0);
 
   const getGradientColors = useCallback(() => {
     switch (weatherCondition) {
@@ -171,11 +171,14 @@ const InteractiveBackground = ({
       }
     };
 
+    // Initialize dimensions and particles
     handleResize();
+
     window.addEventListener('resize', handleResize);
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('touchmove', handleTouchMove);
 
+    // Start the animation loop
     animate();
 
     return () => {

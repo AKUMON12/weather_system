@@ -109,7 +109,8 @@
   /* Glassmorphism card */
   .glass-card {
     @apply bg-card/60 backdrop-blur-xl border border-white/10 rounded-2xl;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4),
+    box-shadow:
+      0 8px 32px rgba(0, 0, 0, 0.4),
       inset 0 1px 0 rgba(255, 255, 255, 0.1);
   }
 
@@ -119,13 +120,17 @@
 
   /* Neon glow effects */
   .neon-glow {
-    box-shadow: 0 0 20px hsl(var(--primary) / 0.4),
-      0 0 40px hsl(var(--primary) / 0.2), 0 0 60px hsl(var(--primary) / 0.1);
+    box-shadow:
+      0 0 20px hsl(var(--primary) / 0.4),
+      0 0 40px hsl(var(--primary) / 0.2),
+      0 0 60px hsl(var(--primary) / 0.1);
   }
 
   .neon-text {
-    text-shadow: 0 0 10px hsl(var(--primary) / 0.8),
-      0 0 20px hsl(var(--primary) / 0.6), 0 0 40px hsl(var(--primary) / 0.4);
+    text-shadow:
+      0 0 10px hsl(var(--primary) / 0.8),
+      0 0 20px hsl(var(--primary) / 0.6),
+      0 0 40px hsl(var(--primary) / 0.4);
   }
 
   /* Focus ring */
@@ -135,8 +140,10 @@
   }
 
   .neon-focus:focus {
-    box-shadow: 0 0 0 2px hsl(var(--background)),
-      0 0 0 4px hsl(var(--primary) / 0.5), 0 0 20px hsl(var(--primary) / 0.3);
+    box-shadow:
+      0 0 0 2px hsl(var(--background)),
+      0 0 0 4px hsl(var(--primary) / 0.5),
+      0 0 20px hsl(var(--primary) / 0.3);
   }
 
   /* Gradient text */
@@ -167,11 +174,15 @@
   }
 
   .gradient-night {
-    background: linear-gradient(
-      135deg,
-      hsl(var(--night-start)),
-      hsl(var(--night-end))
-    );
+    background:
+      radial-gradient(
+        circle at 50% 50%,
+        hsl(var(--primary) / 0.15),
+        transparent 50%
+      ),
+      /* The purple glow */
+        linear-gradient(135deg, hsl(var(--night-start)), hsl(var(--night-end))); /* The base gradient */
+    background-attachment: fixed;
   }
 
   /* Hover effects */
@@ -181,7 +192,8 @@
 
   .hover-lift:hover {
     transform: translateY(-4px);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5),
+    box-shadow:
+      0 12px 40px rgba(0, 0, 0, 0.5),
       0 0 20px hsl(var(--primary) / 0.2);
   }
 
@@ -234,7 +246,8 @@
     box-shadow: 0 0 20px hsl(var(--primary) / 0.4);
   }
   to {
-    box-shadow: 0 0 40px hsl(var(--primary) / 0.6),
+    box-shadow:
+      0 0 40px hsl(var(--primary) / 0.6),
       0 0 60px hsl(var(--primary) / 0.3);
   }
 }

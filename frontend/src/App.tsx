@@ -1,27 +1,18 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import "./index.css";
-import WeatherChart from "./components/dashboard/WeatherChart.js";
-import Auth from "./components/auth/AuthCard.js";
+import WeatherChart from "./components/dashboard/WeatherChart";
+import Auth from "./components/auth/AuthCard";
+import InteractiveBackground from "./components/backgrounds/InteractiveBackground";
 
-// Better UI in this part:
-/*  ---  */
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { Toaster } from "./components/ui/toaster";
+import { Toaster as Sonner } from "./components/ui/sonner";
+import { TooltipProvider } from "./components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-/*  ---  */
-
-// NEED SOME RESOLUTIONS FOR THESE ERRORS:
-// Error 1: "Cascading render detected" due to useEffect setting state after initial render
-// Error 2: "toggleDarkMode is defined but never used" - ESLint warning
-// Error 3: "State update on unmounted component" when fetching favorites after login
 
 const queryClient = new QueryClient();
-
 
 interface Favorite {
   favorite_id: number;
@@ -31,7 +22,7 @@ interface Favorite {
 function App() {
   const API_URL = import.meta.env.VITE_API_BASE_URL;
 
-  // 1. LAZY INITIALIZERS: Load from localStorage immediately (Fixes Error 1 & 3)
+  // 1. STATE DECLARATIONS
   const [user, setUser] = useState<any>(() => {
     const savedUser = localStorage.getItem("user");
     return savedUser ? JSON.parse(savedUser) : null;
@@ -42,10 +33,14 @@ function App() {
   });
 
   const [city, setCity] = useState("");
-  const [weather, setWeather] = useState<any>(null); // Allow any object instead of just null
-  const [favorites, setFavorites] = useState<Favorite[]>([]); // Array of Favorite objects
+  const [weather, setWeather] = useState<any>(null);
+  const [favorites, setFavorites] = useState<Favorite[]>([]);
 
-  // 2. USE CALLBACK: Memoize the fetch function
+  // FIXED: Re-added missing state declarations
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  // 2. MEMOIZED FETCHING
   const fetchFavorites = useCallback(async () => {
     if (!user) return;
     const token = localStorage.getItem("token");
@@ -59,17 +54,13 @@ function App() {
     }
   }, [user, API_URL]);
 
-  // 3. EFFECT: Load favorites when user logs in
   useEffect(() => {
-    const loadData = async () => {
-      if (user) {
-        await fetchFavorites();
-      }
-    };
-    loadData();
-  }, [user, fetchFavorites]); // The linter is happy now because the state update is wrapped in an async flow
+    if (user) {
+      fetchFavorites();
+    }
+  }, [user, fetchFavorites]);
 
-  // UI Handlers
+  // 3. HANDLERS
   const toggleDarkMode = () => {
     const newMode = !darkMode;
     setDarkMode(newMode);
@@ -83,7 +74,7 @@ function App() {
     setWeather(null);
   };
 
-  const fetchWeather = async (e, cityName = city) => {
+  const fetchWeather = async (e: any, cityName = city) => {
     if (e) e.preventDefault();
     setLoading(true);
     setError("");
@@ -97,7 +88,7 @@ function App() {
   };
 
   const saveFavorite = async () => {
-    if (!weather) return; // Fixes "possibly null" error
+    if (!weather) return;
     const token = localStorage.getItem("token");
     try {
       await axios.post(
@@ -115,165 +106,114 @@ function App() {
     }
   };
 
-  if (!user)
-    return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-        <Auth
-          onLoginSuccess={(userData) => {
-            setUser(userData);
-            localStorage.setItem("user", JSON.stringify(userData));
-          }}
-        />
-      </div>
-    );
-
+  // 4. RENDER LOGIC
   return (
-    // Improved UI with these implementations:
-    /*  ---  */
     <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={
-            !user ? (
-              <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-                <Auth
-                  onLoginSuccess={(userData) => {
-                    setUser(userData);
-                    localStorage.setItem("user", JSON.stringify(userData));
-                  }}
-                />
-              </div>
-            ) : (
-    /*  ---  */
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={
+              !user ? (
+                /* Change the line below to use your atmospheric classes */
+                <div className="relative min-h-screen bg-background gradient-night flex items-center justify-center p-4 overflow-hidden">
+                  {/* This renders the stars/particles */}
+                  <InteractiveBackground />
 
-
-            // Applied darkMode class to the container
-            <div
-              className={`min-h-screen p-6 transition-colors duration-300 ${
-                darkMode ? "bg-slate-900 text-white" : "bg-blue-50 text-slate-900"
-              }`}
-            >
-              {/* Header */}
-              <div className="flex justify-between items-center max-w-6xl mx-auto mb-8">
-                <h1 className="text-3xl font-bold">🌤️ {user.username}'s Weather</h1>
-                <div className="flex gap-4 items-center">
-                  {/* FIXED: Using toggleDarkMode here resolves the 'unused variable' error */}
-                  <button
-                    onClick={toggleDarkMode}
-                    className="p-2 bg-gray-200 dark:bg-slate-700 rounded-full"
-                  >
-                    {darkMode ? "🌙" : "☀️"}
-                  </button>
-                  <button
-                    onClick={handleLogout}
-                    className="text-red-500 font-semibold underline"
-                  >
-                    Logout
-                  </button>
+                  {/* Content wrapper with z-index to stay above the background */}
+                  <div className="relative z-10 w-full max-w-md animate-fade-in">
+                    <Auth onAuthSuccess={(userData) => {
+                      setUser(userData);
+                      localStorage.setItem("user", JSON.stringify(userData));
+                    }} />
+                  </div>
                 </div>
-              </div>
-
-              <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-6">
-                {/* Sidebar */}
-                <div
-                  className={`p-4 rounded-xl shadow-md h-fit ${
-                    darkMode ? "bg-slate-800" : "bg-white"
-                  }`}
-                >
-                  <h3 className="font-bold mb-4 border-b pb-2">⭐ Favorites</h3>
-                  {favorites.map((fav) => (
-                    <button
-                      key={fav.favorite_id}
-                      onClick={() => fetchWeather(null, fav.city_name)}
-                      className={`block w-full text-left p-2 rounded text-sm mb-1 ${
-                        darkMode ? "hover:bg-slate-700" : "hover:bg-blue-100"
-                      }`}
-                    >
-                      📍 {fav.city_name}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Main Content */}
-                <div className="md:col-span-3 flex flex-col items-center">
-                  <form
-                    onSubmit={fetchWeather}
-                    className="flex gap-2 mb-8 w-full max-w-md"
-                  >
-                    {/* Add this inside your return block, under the search form */}
-                    {error && (
-                      <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-4 rounded shadow-md animate-pulse">
-                        <p className="font-bold">Error</p>
-                        <p>{error}</p>
-                      </div>
-                    )}
-                    <input
-                      type="text"
-                      value={city}
-                      onChange={(e) => setCity(e.target.value)}
-                      placeholder="Search city..."
-                      className={`flex-1 px-4 py-2 rounded-lg border shadow-sm ${
-                        darkMode ? "bg-slate-800 border-slate-700" : "bg-white"
-                      }`}
-                    />
-                    <button
-                      disabled={loading}
-                      className="bg-blue-600 text-white px-6 py-2 rounded-lg shadow-md"
-                    >
-                      {loading ? "..." : "Search"}
-                    </button>
-                  </form>
-
-                  {weather && (
-                    <div className="w-full flex flex-col items-center animate-fade-in">
-                      <div
-                        className={`p-8 rounded-2xl shadow-xl w-80 text-center relative ${
-                          darkMode ? "bg-slate-800" : "bg-white"
-                        }`}
-                      >
-                        <button
-                          onClick={saveFavorite}
-                          className="absolute top-4 right-4 text-2xl"
-                        >
-                          ⭐
+              ) : (
+                // inside App.tsx return block...
+                <div className={`min-h-screen p-6 transition-all duration-700 font-sans ${weather?.list[0].weather[0].main.includes('Rain') ? 'theme-rainy gradient-rainy' :
+                  weather?.list[0].weather[0].main.includes('Clear') ? 'theme-sunny gradient-sunny' : 'gradient-night'
+                  }`}>
+                  <div className="max-w-6xl mx-auto">
+                    {/* Header with Glassmorphism */}
+                    <header className="glass-card p-6 mb-8 flex justify-between items-center animate-fade-in">
+                      <h1 className="text-4xl font-black gradient-text uppercase tracking-tighter">
+                        🌤️ {user.username}'s Sky
+                      </h1>
+                      <div className="flex gap-4">
+                        <button onClick={toggleDarkMode} className="p-3 glass-card-subtle hover-lift">
+                          {darkMode ? "🌙" : "☀️"}
                         </button>
-                        <h2 className="text-2xl font-bold">{weather.city.name}</h2>
-                        <p className="text-5xl font-extrabold text-blue-600 my-4">
-                          {Math.round(weather.list[0].main.temp)}°C
-                        </p>
-                        <WeatherChart data={weather} />
+                        <button onClick={handleLogout} className="px-6 py-2 bg-destructive/20 border border-destructive/50 text-destructive-foreground rounded-full hover:bg-destructive/40 transition-colors">
+                          Logout
+                        </button>
                       </div>
+                    </header>
+
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+                      {/* Sidebar - Using your .glass-card class */}
+                      <aside className="glass-card p-6 h-fit sticky top-6">
+                        <h3 className="font-bold mb-6 text-primary border-b border-white/10 pb-2 uppercase tracking-widest text-xs">
+                          ⭐ Favorites
+                        </h3>
+                        <div className="space-y-2 custom-scrollbar max-h-[400px] overflow-y-auto">
+                          {favorites.map((fav) => (
+                            <button
+                              key={fav.favorite_id}
+                              onClick={() => fetchWeather(null, fav.city_name)}
+                              className="block w-full text-left p-3 rounded-xl glass-card-subtle hover-lift text-sm transition-all"
+                            >
+                              📍 {fav.city_name}
+                            </button>
+                          ))}
+                        </div>
+                      </aside>
+
+                      {/* Main Content */}
+                      <main className="md:col-span-3">
+                        <form onSubmit={fetchWeather} className="flex gap-3 mb-12">
+                          <input
+                            type="text"
+                            value={city}
+                            onChange={(e) => setCity(e.target.value)}
+                            placeholder="Search atmospheric data..."
+                            className="flex-1 px-6 py-4 glass-card bg-white/5 border-white/10 neon-focus text-white placeholder:text-white/30"
+                          />
+                          <button disabled={loading} className="glass-card px-8 py-4 bg-primary/20 hover:bg-primary/40 border-primary/50 neon-glow transition-all font-bold">
+                            {loading ? "..." : "SCAN"}
+                          </button>
+                        </form>
+
+                        {weather && (
+                          <div className="animate-slide-up">
+                            <div className="glass-card p-10 relative overflow-hidden">
+                              {/* This pulls from your WeatherChart.tsx */}
+                              <WeatherChart
+                                weather={{
+                                  city: weather.city.name,
+                                  country: weather.city.country || "", // 👈 Add this line
+                                  temperature: weather.list[0].main.temp,
+                                  condition: weather.list[0].weather[0].description
+                                }}
+                                isFavorite={favorites.some(f => f.city_name === weather.city.name)}
+                                onToggleFavorite={saveFavorite}
+                                forecastData={weather}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </main>
                     </div>
-                  )}
+                  </div>
                 </div>
-              </div>
-            </div>
-
-
-    /*  ---  */
-    } />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-  /*  ---  */
+              )
+            } />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
   );
 }
 
 export default App;
-
-{
-  /* --- IGNORE --- */
-  //   What fixed the errors?
-  // Cascading Renders Fix: I removed the useEffect that was calling setUser and setDarkMode after the first render. Instead, I put that logic inside the useState(() => { ... }). Now, the very first time the component "wakes up," it already knows the user and the theme.
-  // Unused Variable Fix: The ESLint error for toggleDarkMode occurred because the function was defined but never called in your JSX. I added the toggle button back into the header.
-  // Redundancy Fix: I consolidated your useEffect calls. You had two different effects trying to load favorites; I combined them into one clean logic flow using useCallback.
-  // Definitions for your notes:
-  // Lazy Initialization: Passing a function to useState. React only runs this function on the very first render to determine the initial state.
-  // Cascading Render: A situation where a state update inside an effect triggers a second render immediately after the first one, leading to poor performance.
-  // Does your IDE show a clean slate now with no red/yellow lines? If so, your Weather Dashboard is officially complete! Would you like to talk about how to host this online (e.g., using Vercel or Render)?
-}
