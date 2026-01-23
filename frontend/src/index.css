@@ -68,24 +68,6 @@
     --sidebar-ring: 280 100% 70%;
   }
 
-  /* Sunny theme */
-  .theme-sunny {
-    --background: 43 30% 10%;
-    --primary: 43 96% 56%;
-    --accent: 199 89% 60%;
-    --neon-purple: 43 96% 56%;
-  }
-
-  /* Rainy theme */
-  .theme-rainy {
-    --background: 244 40% 8%;
-    --primary: 244 58% 60%;
-    --accent: 215 50% 50%;
-    --neon-purple: 244 58% 60%;
-  }
-}
-
-@layer base {
   * {
     @apply border-border;
   }
@@ -105,8 +87,118 @@
   }
 }
 
+/* --- DYNAMIC ATMOSPHERIC BACKGROUND SYSTEM --- */
+.skycast-bg {
+  /* 1. DEFAULT VARIABLES (Night/Neutral) */
+  --bg-color-1: #09090b;
+  --bg-color-2: #1e1b4b;
+  --bg-color-3: #2e1065;
+  --bg-color-4: #020617;
+  --orb-color-1: #6366f1;
+  --orb-color-2: #a855f7;
+
+  /* 2. BACKGROUND LOGIC - Slowed to 30s for a "drifting" feel */
+  background: linear-gradient(
+    -45deg,
+    var(--bg-color-1),
+    var(--bg-color-2),
+    var(--bg-color-3),
+    var(--bg-color-4)
+  );
+  background-size: 400% 400%;
+  animation: mesh-gradient 30s ease-in-out infinite;
+  transition: all 2.5s ease-in-out; /* Slow color fade between cities */
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 3. THEME OVERRIDES */
+.theme-sunny {
+  --bg-color-1: #f59e0b;
+  --bg-color-2: #ea580c;
+  --bg-color-3: #fcd34d;
+  --bg-color-4: #fbbf24;
+  --orb-color-1: #fff7ed;
+  --orb-color-2: #fef3c7;
+}
+
+.theme-rainy {
+  --bg-color-1: #1e3a8a;
+  --bg-color-2: #1e40af;
+  --bg-color-3: #3b82f6;
+  --bg-color-4: #172554;
+  --orb-color-1: #93c5fd;
+  --orb-color-2: #2563eb;
+}
+
+.theme-cloudy {
+  --bg-color-1: #334155;
+  --bg-color-2: #475569;
+  --bg-color-3: #1e293b;
+  --bg-color-4: #0f172a;
+  --orb-color-1: #94a3b8;
+  --orb-color-2: #64748b;
+}
+
+/* 4. SLOW FLOATING ORBS */
+.skycast-bg::before,
+.skycast-bg::after {
+  content: "";
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  filter: blur(120px);
+  z-index: 0;
+  opacity: 0.3;
+  pointer-events: none;
+  transition: background 3s ease-in-out;
+}
+
+.skycast-bg::before {
+  background: var(--orb-color-1);
+  top: -15%;
+  left: -10%;
+  animation: float-orb 40s infinite alternate-reverse;
+}
+
+.skycast-bg::after {
+  background: var(--orb-color-2);
+  bottom: -15%;
+  right: -10%;
+  animation: float-orb 50s infinite alternate;
+}
+
+/* --- ANIMATIONS --- */
+@keyframes mesh-gradient {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes float-orb {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(100px, 80px) scale(1.1);
+  }
+  66% {
+    transform: translate(-50px, 120px) scale(0.9);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+}
+
 @layer components {
-  /* Glassmorphism card */
   .glass-card {
     @apply bg-card/60 backdrop-blur-xl border border-white/10 rounded-2xl;
     box-shadow:
@@ -118,35 +210,12 @@
     @apply bg-card/40 backdrop-blur-lg border border-white/5 rounded-xl;
   }
 
-  /* Neon glow effects */
   .neon-glow {
     box-shadow:
       0 0 20px hsl(var(--primary) / 0.4),
-      0 0 40px hsl(var(--primary) / 0.2),
-      0 0 60px hsl(var(--primary) / 0.1);
+      0 0 40px hsl(var(--primary) / 0.2);
   }
 
-  .neon-text {
-    text-shadow:
-      0 0 10px hsl(var(--primary) / 0.8),
-      0 0 20px hsl(var(--primary) / 0.6),
-      0 0 40px hsl(var(--primary) / 0.4);
-  }
-
-  /* Focus ring */
-  .neon-focus {
-    @apply focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary;
-    transition: box-shadow 0.3s ease;
-  }
-
-  .neon-focus:focus {
-    box-shadow:
-      0 0 0 2px hsl(var(--background)),
-      0 0 0 4px hsl(var(--primary) / 0.5),
-      0 0 20px hsl(var(--primary) / 0.3);
-  }
-
-  /* Gradient text */
   .gradient-text {
     @apply bg-clip-text text-transparent;
     background-image: linear-gradient(
@@ -156,98 +225,23 @@
     );
   }
 
-  /* Atmospheric gradient backgrounds */
-  .gradient-sunny {
-    background: linear-gradient(
-      135deg,
-      hsl(var(--sunny-start)),
-      hsl(var(--sunny-end))
-    );
-  }
-
-  .gradient-rainy {
-    background: linear-gradient(
-      135deg,
-      hsl(var(--rainy-start)),
-      hsl(var(--rainy-end))
-    );
-  }
-
-  .gradient-night {
-    background:
-      radial-gradient(
-        circle at 50% 50%,
-        hsl(var(--primary) / 0.15),
-        transparent 50%
-      ),
-      /* The purple glow */
-        linear-gradient(135deg, hsl(var(--night-start)), hsl(var(--night-end))); /* The base gradient */
-    background-attachment: fixed;
-  }
-
-  /* Hover effects */
   .hover-lift {
     @apply transition-all duration-300;
   }
 
   .hover-lift:hover {
     transform: translateY(-4px);
-    box-shadow:
-      0 12px 40px rgba(0, 0, 0, 0.5),
-      0 0 20px hsl(var(--primary) / 0.2);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
   }
 
-  /* Scrollbar styling */
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
   }
-
   .custom-scrollbar::-webkit-scrollbar-track {
     background: hsl(var(--muted) / 0.3);
-    border-radius: 3px;
   }
-
   .custom-scrollbar::-webkit-scrollbar-thumb {
     background: hsl(var(--primary) / 0.5);
     border-radius: 3px;
-  }
-
-  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--primary) / 0.7);
-  }
-}
-
-@layer utilities {
-  .animate-float {
-    animation: float 6s ease-in-out infinite;
-  }
-
-  .animate-pulse-slow {
-    animation: pulse 4s ease-in-out infinite;
-  }
-
-  .animate-glow {
-    animation: glow 2s ease-in-out infinite alternate;
-  }
-}
-
-@keyframes float {
-  0%,
-  100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-20px);
-  }
-}
-
-@keyframes glow {
-  from {
-    box-shadow: 0 0 20px hsl(var(--primary) / 0.4);
-  }
-  to {
-    box-shadow:
-      0 0 40px hsl(var(--primary) / 0.6),
-      0 0 60px hsl(var(--primary) / 0.3);
   }
 }

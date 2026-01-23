@@ -72,6 +72,17 @@ function App() {
     refetchInterval: 30000,  // 👈 Check every 30 seconds
   });
 
+  // 2. PLACE YOUR LOGIC HERE (Before the return)
+  const weatherMain = displayWeather?.list?.[0]?.weather?.[0]?.main || "Night";
+
+  const themeClass =
+    weatherMain.includes('Rain') ? 'theme-rainy' :
+      weatherMain.includes('Clear') ? 'theme-sunny' :
+        weatherMain.includes('Clouds') ? 'theme-cloudy' :
+          'theme-night';
+
+  console.log("Current Weather:", weatherMain, "Applying Theme:", themeClass);
+
   // 2. MEMOIZED FETCHING
   const fetchFavorites = useCallback(async () => {
     if (!user) return;
@@ -217,20 +228,58 @@ function App() {
                 </div>
               </div>
             ) : (
-              <div className={`min-h-screen p-6 transition-all duration-700 font-sans ${weather?.list?.[0]?.weather?.[0]?.main?.includes('Rain') ? 'theme-rainy gradient-rainy' :
-                weather?.list?.[0]?.weather?.[0]?.main?.includes('Clear') ? 'theme-sunny gradient-sunny' : 'gradient-night'
+              <div className={`skycast-bg min-h-screen p-6 transition-all duration-1000 font-sans ${displayWeather?.list?.[0]?.weather?.[0]?.main?.includes('Rain') ? 'theme-rainy' :
+                displayWeather?.list?.[0]?.weather?.[0]?.main?.includes('Clear') ? 'theme-sunny' :
+                  displayWeather?.list?.[0]?.weather?.[0]?.main?.includes('Clouds') ? 'theme-cloudy' :
+                    'theme-night'
                 }`}>
                 <div className="max-w-6xl mx-auto">
-                  <header className="glass-card p-6 mb-8 flex justify-between items-center animate-fade-in">
-                    <h1 className="text-4xl font-black gradient-text uppercase tracking-tighter">
-                      🌤️ {user?.username}'s Sky {weather?.city?.name ? `- ${weather.city.name}` : ''}
-                      {isFetching && <span className="ml-2 text-xs animate-pulse text-primary">● LIVE SYNCING</span>}
+                  <header className="glass-card flex justify-between items-center py-4 px-6 mb-8 mt-4 rounded-2xl border-white/5 shadow-2xl animate-fade-in">
+                    {/* Left Branding */}
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center text-xl">☁️</div>
+                      <div>
+                        <h1 className="text-sm font-bold tracking-tight text-white/90">SkyCast OS</h1>
+                        <p className="text-[10px] text-white/40 uppercase tracking-widest leading-none">Atmospheric Portal</p>
+                      </div>
+                    </div>
+
+                    {/* Center Title */}
+                    <h1 className="text-xl md:text-2xl font-black gradient-text uppercase tracking-tighter text-center flex-1">
+                      🌤️ {user?.username}'s Sky
+                      {weather?.city?.name ? ` - ${weather.city.name}` : ''}
+                      {isFetching && (
+                        <span className="ml-2 text-xs animate-pulse text-primary">● LIVE SYNCING</span>
+                      )}
                     </h1>
-                    <div className="flex gap-4">
-                      <button onClick={toggleDarkMode} className="p-3 glass-card-subtle hover-lift">
+
+                    {/* Right Controls */}
+                    <div className="flex items-center gap-4">
+                      {/* Date + Time (hidden on small screens) */}
+                      <div className="text-xs md:text-sm font-medium text-white/70 hidden md:block">
+                        {new Date().toLocaleDateString('en-US', {
+                          weekday: 'long',
+                          month: 'long',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                        <span className="ml-2 opacity-50">|</span>
+                        <span className="ml-2 font-mono">{new Date().toLocaleTimeString()}</span>
+                      </div>
+
+                      {/* Dark Mode Toggle */}
+                      <button
+                        onClick={toggleDarkMode}
+                        className="p-3 glass-card-subtle hover-lift"
+                      >
                         {darkMode ? "🌙" : "☀️"}
                       </button>
-                      <button onClick={handleLogout} className="px-6 py-2 bg-destructive/20 border border-destructive/50 text-destructive-foreground rounded-full hover:bg-destructive/40 transition-colors">
+
+                      {/* Logout */}
+                      <button
+                        onClick={handleLogout}
+                        className="px-6 py-2 bg-destructive/20 border border-destructive/50 text-destructive-foreground rounded-full hover:bg-destructive/40 transition-colors"
+                      >
                         Logout
                       </button>
                     </div>
