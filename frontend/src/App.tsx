@@ -23,6 +23,11 @@ interface Favorite {
 }
 
 function App() {
+  // Page Title
+  useEffect(() => {
+    document.title = "Dashboard - SkyCast OS";
+  }, []);
+
   const API_URL = import.meta.env.VITE_API_BASE_URL;
 
   const queryClient = useQueryClient();
