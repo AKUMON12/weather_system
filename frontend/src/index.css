@@ -115,21 +115,31 @@
 
 /* 3. THEME OVERRIDES */
 .theme-sunny {
-  --bg-color-1: #f59e0b;
-  --bg-color-2: #ea580c;
-  --bg-color-3: #fcd34d;
-  --bg-color-4: #fbbf24;
-  --orb-color-1: #fff7ed;
-  --orb-color-2: #fef3c7;
+  /* 🌅 Deep Sunset Palette: Provides high contrast for text */
+  --bg-color-1: #3e1b01; /* Deep chocolate/burnt umber */
+  --bg-color-2: #8a3200; /* Rich rust orange */
+  --bg-color-3: #5c2600; /* Dark mahogany */
+  --bg-color-4: #c2410c; /* Bold sunset orange */
+
+  /* 🔥 Warm Glowing Orbs */
+  --orb-color-1: rgba(251, 146, 60, 0.4); /* Vibrant orange glow */
+  --orb-color-2: rgba(254, 215, 170, 0.2); /* Soft peach glow */
+
+  /* 👇 TEXT SYSTEM OVERRIDE */
+  --foreground: 222 47% 11%; /* near-black slate */
+  --muted-foreground: 215 25% 30%;
+  --card-foreground: 222 47% 11%;
+  --popover-foreground: 222 47% 11%;
 }
 
 .theme-rainy {
-  --bg-color-1: #1e3a8a;
-  --bg-color-2: #1e40af;
-  --bg-color-3: #3b82f6;
-  --bg-color-4: #172554;
-  --orb-color-1: #93c5fd;
-  --orb-color-2: #2563eb;
+  --bg-color-1: #172e6f; /* darker #1e3a8a */
+  --bg-color-2: #17338f; /* darker #1e40af */
+  --bg-color-3: #0f56cc; /* darker #126af8 */
+  --bg-color-4: #111c44; /* darker #172554 */
+
+  --orb-color-1: #0d6bd6; /* toned-down #117ffd */
+  --orb-color-2: #1d4ed8; /* toned-down #2563eb */
 }
 
 .theme-cloudy {
@@ -142,6 +152,10 @@
 }
 
 /* 4. SLOW FLOATING ORBS */
+.skycast-bg {
+  background: transparent !important; /* Forces the dashboard to be a window to the canvas */
+}
+
 .skycast-bg::before,
 .skycast-bg::after {
   content: "";
@@ -181,6 +195,25 @@
   100% {
     background-position: 0% 50%;
   }
+}
+
+@keyframes float {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+.animate-pulse {
+  animation: float 15s infinite ease-in-out;
 }
 
 @keyframes float-orb {
@@ -244,4 +277,74 @@
     background: hsl(var(--primary) / 0.5);
     border-radius: 3px;
   }
+
+  /* The Grainy Overlay */
+  .noise-overlay {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    content: "";
+    opacity: 0.03; /* Very subtle */
+    z-index: 1;
+    pointer-events: none;
+    background-image: url("https://grainy-gradients.vercel.app/noise.svg");
+  }
+
+  /* Subtle Glow for your Glass Cards */
+  .glass-card {
+    /* Core glass look */
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.08),
+      rgba(255, 255, 255, 0.02)
+    );
+    backdrop-filter: blur(14px) saturate(120%);
+    -webkit-backdrop-filter: blur(14px) saturate(120%);
+
+    /* Shape & edge */
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+
+    /* Depth */
+    box-shadow:
+      0 10px 30px rgba(0, 0, 0, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.15);
+
+    /* Optional polish */
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+
+  .glass-card:hover {
+    transform: translateY(-2px);
+    box-shadow:
+      0 14px 40px rgba(0, 0, 0, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+}
+
+/* Update your glass-card logic */
+.theme-sunny .glass-card {
+  background: rgba(0, 0, 0, 0.05); /* Subtle dark tint instead of white */
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: #0f172a; /* Force dark text for readability */
+}
+
+.theme-sunny .glass-card-subtle {
+  background: rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: #1e293b;
+}
+
+/* Ensure the search input is readable */
+.theme-sunny input {
+  color: #0f172a;
+}
+.theme-sunny input::placeholder {
+  color: rgba(15, 23, 42, 0.5);
 }

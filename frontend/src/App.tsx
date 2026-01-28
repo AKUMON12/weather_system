@@ -2,6 +2,13 @@ import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import "./index.css";
 import WeatherChart from "./components/dashboard/WeatherChart";
+
+// Add these imports at the top of App.tsx
+import { WeatherHero } from "./components/dashboard/WeatherHero";
+import { WeatherMetricsGrid } from "./components/dashboard/WeatherMetricsGrid";
+
+import FavoritesSidebar from "./components/dashboard/FavoritesSidebar";
+
 import Auth from "./components/auth/AuthCard";
 import InteractiveBackground from "./components/backgrounds/InteractiveBackground";
 
@@ -15,17 +22,22 @@ import NotFound from "./pages/NotFound";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
+
+
 const queryClient = new QueryClient();
 
 interface Favorite {
   favorite_id: number;
   city_name: string;
+  temp?: number;    // Added this
+  country?: string; // Added this
 }
 
 function App() {
+
   // Page Title
   useEffect(() => {
-    document.title = "Dashboard - SkyCast OS";
+    document.title = "Weather Monitoring";
   }, []);
 
   const API_URL = import.meta.env.VITE_API_BASE_URL;
@@ -96,7 +108,25 @@ function App() {
       const res = await axios.get(`${API_URL}/api/favorites`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setFavorites(res.data);
+
+      // 💡 Fetch weather for each favorite to get temperature/country
+      const favoritesWithWeather = await Promise.all(
+        res.data.map(async (fav: Favorite) => {
+          try {
+            const wRes = await axios.get(`${API_URL}/api/weather/${fav.city_name}`);
+            const data = typeof wRes.data.data === 'string' ? JSON.parse(wRes.data.data) : wRes.data.data;
+            return {
+              ...fav,
+              temp: data.list[0].main.temp,
+              country: data.city.country
+            };
+          } catch {
+            return fav; // Fallback if one city fails
+          }
+        })
+      );
+
+      setFavorites(favoritesWithWeather);
     } catch (err) {
       console.error("Error fetching favorites:", err);
     }
@@ -154,7 +184,7 @@ function App() {
         setSearchId(prev => prev + 1);
         setDisplayWeather(newData);
         setLoading(false);
-        toast.success(`Synced from ${response.data.source}: ${newData.city.name}`);
+        toast.success(`Searched: ${newData.city.name}`);
       }, 500);
 
       setCity("");
@@ -196,9 +226,14 @@ function App() {
         toast.success(`${cityName} saved to favorites!`);
       }
       fetchFavorites(); // Refresh the sidebar list
-    } catch (err) {
+    } catch (err: any) {
       console.error("Action failed", err);
-      toast.error("Failed to update favorites.");
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        toast.error("Session expired. Please log in again.");
+        handleLogout(); // This clears the bad token
+      } else {
+        toast.error("Failed to update favorites.");
+      }
     }
   };
 
@@ -214,8 +249,27 @@ function App() {
     }
   };
 
+  // Inside your App component, near your other states:
+  const [showSync, setShowSync] = useState(false);
+
+  useEffect(() => {
+    if (isFetching) {
+      setShowSync(true);
+    } else {
+      // When fetching stops, wait a bit before hiding the indicator
+      const timer = setTimeout(() => {
+        setShowSync(false);
+      }, 2000); // 2 seconds minimum display time
+      return () => clearTimeout(timer);
+    }
+  }, [isFetching]);
+
+  // Inside App.tsx, before the return:
+  const isSunny = weatherMain.includes('Clear') || weatherMain.includes('Sunny');
+  const textColor = isSunny ? 'text-slate-900' : 'text-white';
+  const subTextColor = isSunny ? 'text-slate-800/60' : 'text-white/40';
+
   return (
-    // <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
@@ -223,8 +277,16 @@ function App() {
         <Routes>
           <Route path="/" element={
             !user ? (
-              <div className="relative min-h-screen bg-transparent flex items-center justify-center p-4 overflow-hidden">
-                <InteractiveBackground />
+              /* Auth screen remains dark for focus */
+              <div className="fixed inset-0 w-full h-full flex items-center justify-center p-4 overflow-hidden bg-[#0a0a0c]">
+                <InteractiveBackground
+                  weatherCondition={
+                    displayWeather?.list?.[0]?.weather?.[0]?.main?.toLowerCase().includes('rain') ? 'rainy' :
+                      displayWeather?.list?.[0]?.weather?.[0]?.main?.toLowerCase().includes('clear') ? 'sunny' :
+                        displayWeather?.list?.[0]?.weather?.[0]?.main?.toLowerCase().includes('cloud') ? 'cloudy' :
+                          displayWeather?.list?.[0]?.weather?.[0]?.main?.toLowerCase().includes('storm') ? 'stormy' : 'night'
+                  }
+                />
                 <div className="relative z-10 w-full max-w-md animate-fade-in">
                   <Auth onAuthSuccess={(userData) => {
                     setUser(userData);
@@ -233,90 +295,85 @@ function App() {
                 </div>
               </div>
             ) : (
-              <div className={`skycast-bg min-h-screen p-6 transition-all duration-1000 font-sans ${displayWeather?.list?.[0]?.weather?.[0]?.main?.includes('Rain') ? 'theme-rainy' :
-                displayWeather?.list?.[0]?.weather?.[0]?.main?.includes('Clear') ? 'theme-sunny' :
-                  displayWeather?.list?.[0]?.weather?.[0]?.main?.includes('Clouds') ? 'theme-cloudy' :
-                    'theme-night'
-                }`}>
-                <div className="max-w-6xl mx-auto">
+              /* Dashboard with Dynamic Theme and Text Color */
+              <div className={`skycast-bg min-h-screen p-6 transition-all duration-1000 font-sans ${themeClass} ${textColor}`}>
+
+                <InteractiveBackground
+                  weatherCondition={
+                    displayWeather?.list?.[0]?.weather?.[0]?.main?.toLowerCase().includes('rain') ? 'rainy' :
+                      displayWeather?.list?.[0]?.weather?.[0]?.main?.toLowerCase().includes('clear') ? 'sunny' :
+                        displayWeather?.list?.[0]?.weather?.[0]?.main?.toLowerCase().includes('cloud') ? 'cloudy' :
+                          displayWeather?.list?.[0]?.weather?.[0]?.main?.toLowerCase().includes('storm') ? 'stormy' : 'night'
+                  }
+                />
+
+                <div className="relative z-10 max-w-[100rem] mx-auto">
                   <header className="glass-card flex justify-between items-center py-4 px-6 mb-8 mt-4 rounded-2xl border-white/5 shadow-2xl animate-fade-in">
                     {/* Left Branding */}
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center text-xl">☁️</div>
                       <div>
-                        <h1 className="text-sm font-bold tracking-tight text-white/90">SkyCast OS</h1>
-                        <p className="text-[10px] text-white/40 uppercase tracking-widest leading-none">Atmospheric Portal</p>
+                        <h1 className="text-sm font-bold tracking-tight opacity-90">SkyCast OS</h1>
+                        <p className={`text-[10px] uppercase tracking-widest leading-none ${subTextColor}`}>Atmospheric Portal</p>
                       </div>
                     </div>
 
                     {/* Center Title */}
-                    <h1 className="text-xl md:text-2xl font-black gradient-text uppercase tracking-tighter text-center flex-1">
+                    <h1 className={`text-xl md:text-2xl font-black uppercase tracking-tighter text-center flex-1 transition-colors duration-500 ${textColor}`}>
                       🌤️ {user?.username}'s Sky
                       {weather?.city?.name ? ` - ${weather.city.name}` : ''}
-                      {isFetching && (
-                        <span className="ml-2 text-xs animate-pulse text-primary">● LIVE SYNCING</span>
+
+                      {/* Changed isFetching to showSync */}
+                      {showSync && (
+                        <span className="ml-2 text-xs animate-pulse block md:inline transition-opacity duration-300">
+                          ● LIVE SYNCING
+                        </span>
                       )}
                     </h1>
 
                     {/* Right Controls */}
                     <div className="flex items-center gap-4">
-                      {/* Date + Time (hidden on small screens) */}
-                      <div className="text-xs md:text-sm font-medium text-white/70 hidden md:block">
+                      <div className={`text-xs md:text-sm font-medium ${subTextColor} hidden md:block`}>
                         {new Date().toLocaleDateString('en-US', {
-                          weekday: 'long',
-                          month: 'long',
-                          day: 'numeric',
-                          year: 'numeric',
+                          weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
                         })}
                         <span className="ml-2 opacity-50">|</span>
                         <span className="ml-2 font-mono">{new Date().toLocaleTimeString()}</span>
                       </div>
 
-                      {/* Dark Mode Toggle */}
-                      <button
-                        onClick={toggleDarkMode}
-                        className="p-3 glass-card-subtle hover-lift"
-                      >
+                      <button onClick={toggleDarkMode} className="p-3 glass-card-subtle hover-lift">
                         {darkMode ? "🌙" : "☀️"}
                       </button>
 
-                      {/* Logout */}
-                      <button
-                        onClick={handleLogout}
-                        className="px-6 py-2 bg-destructive/20 border border-destructive/50 text-destructive-foreground rounded-full hover:bg-destructive/40 transition-colors"
-                      >
+                      <button onClick={handleLogout} className="px-6 py-2 bg-destructive/20 border border-destructive/50 text-destructive-foreground rounded-full hover:bg-destructive/40 transition-colors">
                         Logout
                       </button>
                     </div>
                   </header>
 
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-                    {/* Sidebar */}
-                    <aside className="glass-card p-6 h-fit sticky top-6">
-                      <h3 className="font-bold mb-6 text-primary border-b border-white/10 pb-2 uppercase tracking-widest text-xs">
-                        ⭐ Favorites
-                      </h3>
-                      <div className="space-y-2 custom-scrollbar max-h-[400px] overflow-y-auto">
-                        {favorites.map((fav) => (
-                          <div key={fav.favorite_id} className="group flex items-center gap-2">
-                            <button
-                              onClick={() => fetchWeather(null, fav.city_name)}
-                              className="flex-1 text-left p-3 rounded-xl glass-card-subtle hover-lift text-sm transition-all"
-                            >
-                              📍 {fav.city_name}
-                            </button>
-                            <button
-                              onClick={() => removeFavoriteById(fav.favorite_id)}
-                              className="opacity-0 group-hover:opacity-100 p-2 text-white/40 hover:text-red-400 transition-all"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ))}
-                        {favorites.length === 0 && (
-                          <p className="text-xs text-white/30 text-center py-4">No saved locations</p>
-                        )}
-                      </div>
+                    {/* Inside the return of App.tsx */}
+                    <aside className="md:col-span-1 h-full">
+                      <FavoritesSidebar
+                        favorites={favorites.map((fav: any) => ({
+                          id: fav.favorite_id.toString(),
+                          name: fav.city_name,
+                          country: fav.country || "PH",
+                          temperature: fav.temp || 0,
+                          condition: fav.temp ? (
+                            // Mapping logic for icons
+                            displayWeather?.list?.[0]?.weather?.[0]?.main?.toLowerCase().includes('rain') ? 'rainy' :
+                              displayWeather?.list?.[0]?.weather?.[0]?.main?.toLowerCase().includes('cloud') ? 'cloudy' :
+                                'sunny'
+                          ) : 'sunny'
+                        }))}
+                        selectedCity={displayWeather?.city?.name}
+                        onSelectCity={(cityName) => fetchWeather(null, cityName)}
+                        onRemoveCity={(id) => removeFavoriteById(Number(id))}
+                        // 💡 PASS THE COLOR PROPS HERE
+                        textColor={textColor}
+                        subTextColor={subTextColor}
+                      />
                     </aside>
 
                     {/* Main Content */}
@@ -324,13 +381,13 @@ function App() {
                       <form onSubmit={fetchWeather} className="flex gap-3 mb-12">
                         <input
                           type="text"
-                          id="city-search"       // 👈 Fixes "Missing ID"
-                          name="city-search"     // 👈 Fixes "Missing Name"
-                          autoComplete="off"     // 👈 Fixes "Missing Autocomplete" (use "off" for search bars)
+                          id="city-search"
+                          name="city-search"
+                          autoComplete="off"
                           value={city}
                           onChange={(e) => setCity(e.target.value)}
                           placeholder="Search atmospheric data..."
-                          className="flex-1 px-6 py-4 glass-card bg-white/5 border-white/10 neon-focus text-white placeholder:text-white/30"
+                          className={`flex-1 px-6 py-4 glass-card bg-white/5 border-white/10 neon-focus placeholder:opacity-50 ${textColor}`}
                         />
                         <button
                           disabled={loading}
@@ -340,39 +397,37 @@ function App() {
                             : "bg-primary/20 hover:bg-primary/40 neon-glow"
                             }`}
                         >
-                          {loading ? (
-                            <>
-                              <span className="animate-spin text-lg">⚙️</span>
-                              SCANNING...
-                            </>
-                          ) : (
-                            "SCAN"
-                          )}
+                          {loading ? "SCANNING..." : "SCAN"}
                         </button>
                       </form>
 
                       {displayWeather && displayWeather.city ? (
-                        <div
-                          className="animate-slide-up"
-                          // 💡 This unique key forces the UI to re-appear even if data is the same
-                          key={`weather-box-${displayWeather.city.name}-${searchId}`}
-                        >
-                          <div className="glass-card p-10 relative overflow-hidden">
-                            <WeatherChart
-                              weather={{
-                                city: displayWeather.city.name,
-                                country: displayWeather.city.country || "",
-                                temperature: displayWeather.list?.[0]?.main?.temp || 0,
-                                condition: displayWeather.list?.[0]?.weather?.[0]?.description || "N/A"
-                              }}
-                              isFavorite={favorites.some(f => f.city_name.toLowerCase() === displayWeather.city.name.toLowerCase())}
-                              onToggleFavorite={toggleFavorite}
-                              forecastData={displayWeather}
-                            />
+                        <div className="animate-slide-up space-y-6" key={`weather-box-${searchId}`}>
+                          <WeatherHero
+                            city={displayWeather.city.name}
+                            country={displayWeather.city.country}
+                            temperature={displayWeather.list?.[0]?.main?.temp || 0}
+                            condition={displayWeather.list?.[0]?.weather?.[0]?.description || ""}
+                            isFavorite={favorites.some(f => f.city_name.toLowerCase() === displayWeather.city.name.toLowerCase())}
+                            onToggleFavorite={toggleFavorite}
+                            isSunny={isSunny}
+                          />
+
+                          <div className="glass-card p-6">
+                            <WeatherChart data={displayWeather} />
                           </div>
+
+                          <WeatherMetricsGrid
+                            currentData={{
+                              main: displayWeather.list[0].main,
+                              wind: displayWeather.list[0].wind,
+                              visibility: displayWeather.list[0].visibility
+                            }}
+                            isSunny={isSunny}
+                          />
                         </div>
                       ) : (
-                        <div className="glass-card p-20 text-center opacity-40">
+                        <div className={`glass-card p-20 text-center ${subTextColor}`}>
                           {loading ? (
                             <p className="text-xl animate-pulse uppercase tracking-widest">Scanning Atmosphere...</p>
                           ) : (
@@ -390,7 +445,6 @@ function App() {
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
-
   );
 }
 

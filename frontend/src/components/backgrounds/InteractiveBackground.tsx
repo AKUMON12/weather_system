@@ -29,13 +29,15 @@ const InteractiveBackground = ({
     switch (weatherCondition) {
       case 'sunny':
       case 'clear':
-        return { start: '#fbbf24', end: '#7dd3fc', particle: 'rgba(251, 191, 36, 0.6)' };
+        return { start: '#f59e0b', end: '#0ea5e9', particle: 'rgba(251, 191, 36, 0.5)' };
       case 'rainy':
+        return { start: '#1e3a8a', end: '#334155', particle: 'rgba(147, 197, 253, 0.4)' };
       case 'stormy':
-        return { start: '#312e81', end: '#475569', particle: 'rgba(99, 102, 241, 0.5)' };
-      case 'night':
+        return { start: '#4c1d95', end: '#0f172a', particle: 'rgba(251, 191, 36, 0.6)' };
+      case 'cloudy':
+        return { start: '#475569', end: '#1e293b', particle: 'rgba(203, 213, 225, 0.3)' };
       default:
-        return { start: '#2e1065', end: '#020617', particle: 'rgba(168, 85, 247, 0.4)' };
+        return { start: '#2e1065', end: '#020617', particle: 'rgba(168, 85, 247, 0.3)' };
     }
   }, [weatherCondition]);
 
@@ -45,11 +47,10 @@ const InteractiveBackground = ({
       const x = Math.random() * width;
       const y = Math.random() * height;
       particles.push({
-        x,
-        y,
+        x, y,
         vx: (Math.random() - 0.5) * 0.5,
         vy: (Math.random() - 0.5) * 0.5,
-        size: Math.random() * 3 + 1,
+        size: Math.random() * 2 + 1,
         opacity: Math.random() * 0.5 + 0.2,
         originalX: x,
         originalY: y,
@@ -62,140 +63,102 @@ const InteractiveBackground = ({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d'); // 💡 FIX: Define ctx inside the function
     if (!ctx) return;
 
     const { width, height } = canvas;
     const colors = getGradientColors();
 
-    // Create gradient background
-    const gradient = ctx.createLinearGradient(0, 0, width, height);
+    // 1. Draw Background
+    const gradient = ctx.createRadialGradient(width * 0.3, height * 0.2, 0, width * 0.5, height * 0.5, Math.max(width, height));
     gradient.addColorStop(0, colors.start);
     gradient.addColorStop(1, colors.end);
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
 
-    // Update and draw particles
+    // 2. Update and Draw Particles
     const mouseX = mouseRef.current.x;
     const mouseY = mouseRef.current.y;
-    const interactionRadius = 150;
 
     particlesRef.current.forEach((particle) => {
-      // Calculate distance from mouse
+      // Weather Physics
+      if (weatherCondition === 'rainy' || weatherCondition === 'stormy') {
+        particle.vy += 0.2; // Gravity for rain
+        particle.vx *= 0.1; // Minimal horizontal movement
+        if (particle.y > height) {
+          particle.y = -20;
+          particle.vy = Math.random() * 5 + 5;
+        }
+      } else if (weatherCondition === 'sunny' || weatherCondition === 'clear') {
+        particle.vy -= 0.02; // Floating up like heat haze
+        if (particle.y < 0) particle.y = height;
+      }
+
+      // Mouse Interaction
       const dx = mouseX - particle.x;
       const dy = mouseY - particle.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-
-      // Repel particles from cursor
-      if (distance < interactionRadius && distance > 0) {
-        const force = (interactionRadius - distance) / interactionRadius;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 150) {
+        const force = (150 - dist) / 150;
         const angle = Math.atan2(dy, dx);
         particle.vx -= Math.cos(angle) * force * 2;
         particle.vy -= Math.sin(angle) * force * 2;
       }
 
-      // Return to original position slowly
-      const returnForce = 0.01;
-      particle.vx += (particle.originalX - particle.x) * returnForce;
-      particle.vy += (particle.originalY - particle.y) * returnForce;
-
-      // Apply velocity with damping
       particle.x += particle.vx;
       particle.y += particle.vy;
-      particle.vx *= 0.98;
-      particle.vy *= 0.98;
+      particle.vx *= 0.95;
+      particle.vy *= 0.95;
 
-      // Wrap around edges
-      if (particle.x < 0) particle.x = width;
-      if (particle.x > width) particle.x = 0;
-      if (particle.y < 0) particle.y = height;
-      if (particle.y > height) particle.y = 0;
-
-      // Draw particle with glow
-      ctx.beginPath();
-      const particleGradient = ctx.createRadialGradient(
-        particle.x, particle.y, 0,
-        particle.x, particle.y, particle.size * 3
-      );
-      particleGradient.addColorStop(0, colors.particle);
-      particleGradient.addColorStop(1, 'transparent');
-      ctx.fillStyle = particleGradient;
-      ctx.arc(particle.x, particle.y, particle.size * 3, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Draw core
-      ctx.beginPath();
-      ctx.fillStyle = `rgba(255, 255, 255, ${particle.opacity})`;
-      ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
-      ctx.fill();
-    });
-
-    // Draw connection lines between nearby particles
-    particlesRef.current.forEach((p1, i) => {
-      particlesRef.current.slice(i + 1).forEach((p2) => {
-        const dx = p1.x - p2.x;
-        const dy = p1.y - p2.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
-
-        if (distance < 100) {
-          ctx.beginPath();
-          ctx.strokeStyle = `rgba(255, 255, 255, ${0.1 * (1 - distance / 100)})`;
-          ctx.lineWidth = 0.5;
-          ctx.moveTo(p1.x, p1.y);
-          ctx.lineTo(p2.x, p2.y);
-          ctx.stroke();
-        }
-      });
+      // Draw specialized shapes
+      if (weatherCondition === 'rainy' || weatherCondition === 'stormy') {
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.lineWidth = 1;
+        ctx.moveTo(particle.x, particle.y);
+        ctx.lineTo(particle.x, particle.y + 15);
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        const pGrd = ctx.createRadialGradient(particle.x, particle.y, 0, particle.x, particle.y, particle.size * 4);
+        pGrd.addColorStop(0, colors.particle);
+        pGrd.addColorStop(1, 'transparent');
+        ctx.fillStyle = pGrd;
+        ctx.arc(particle.x, particle.y, particle.size * 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
     });
 
     animationRef.current = requestAnimationFrame(animate);
-  }, [getGradientColors]);
+  }, [getGradientColors, weatherCondition]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-
     const handleResize = () => {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
       initParticles(canvas.width, canvas.height);
     };
+    const handleMouseMove = (e: MouseEvent) => { mouseRef.current = { x: e.clientX, y: e.clientY }; };
 
-    const handleMouseMove = (e: MouseEvent) => {
-      mouseRef.current = { x: e.clientX, y: e.clientY };
-    };
-
-    const handleTouchMove = (e: TouchEvent) => {
-      if (e.touches.length > 0) {
-        mouseRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-      }
-    };
-
-    // Initialize dimensions and particles
     handleResize();
-
     window.addEventListener('resize', handleResize);
     window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('touchmove', handleTouchMove);
-
-    // Start the animation loop
     animate();
 
     return () => {
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('touchmove', handleTouchMove);
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
   }, [animate, initParticles]);
 
   return (
     <canvas
       ref={canvasRef}
-      className="fixed inset-0 -z-10"
-      style={{ pointerEvents: 'none' }}
+      className="fixed inset-0 z-0 block"
+      style={{ pointerEvents: 'none' }} // 💡 Fixed inline style error by moving mostly to Tailwind
     />
   );
 };

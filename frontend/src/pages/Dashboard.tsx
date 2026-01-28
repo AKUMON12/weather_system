@@ -1,7 +1,11 @@
 import { useState, useCallback } from 'react';
 import InteractiveBackground from '@/components/backgrounds/InteractiveBackground';
 import SearchBar from '@/components/dashboard/SearchBar';
-import WeatherHero from '@/components/dashboard/WeatherChart';
+
+// Note: I'm renaming WeatherHero to WeatherChart here to match your new file
+import { WeatherChart } from '@/components/dashboard/WeatherChart';
+import { WeatherMetricsGrid } from "@/components/dashboard/WeatherMetricsGrid";
+
 import FavoritesSidebar from '@/components/dashboard/FavoritesSidebar';
 import InsightsSidebar from '@/components/dashboard/InsightsSidebar';
 import { Cloud, LogOut } from 'lucide-react';
@@ -12,119 +16,45 @@ interface DashboardProps {
 
 type WeatherCondition = 'sunny' | 'rainy' | 'cloudy' | 'night' | 'stormy' | 'snowy';
 
-// Mock data
-const mockWeather: {
-  city: string;
-  country: string;
-  temperature: number;
-  condition: WeatherCondition;
-  humidity: number;
-  windSpeed: number;
-  uvIndex: number;
-  feelsLike: number;
-} = {
+// --- MOCK DATA ---
+const mockWeather = {
   city: 'New York',
   country: 'United States',
   temperature: 24,
-  condition: 'sunny',
+  condition: 'sunny' as WeatherCondition,
   humidity: 65,
   windSpeed: 12,
-  uvIndex: 6,
+  windGust: 15,
+  pressure: 1012,
+  visibility: 10000,
   feelsLike: 26,
 };
 
-const mockFavorites: {
-  id: string;
-  name: string;
-  country: string;
-  temperature: number;
-  condition: WeatherCondition;
-}[] = [
-  { id: '1', name: 'Tokyo', country: 'Japan', temperature: 18, condition: 'cloudy' },
-  { id: '2', name: 'London', country: 'UK', temperature: 12, condition: 'rainy' },
-  { id: '3', name: 'Sydney', country: 'Australia', temperature: 28, condition: 'sunny' },
-  { id: '4', name: 'Paris', country: 'France', temperature: 15, condition: 'cloudy' },
-];
-
-const mockForecast = [
-  { day: 'Today', high: 24, low: 18, condition: 'sunny' as const },
-  { day: 'Tue', high: 22, low: 16, condition: 'cloudy' as const },
-  { day: 'Wed', high: 19, low: 14, condition: 'rainy' as const },
-  { day: 'Thu', high: 21, low: 15, condition: 'cloudy' as const },
-  { day: 'Fri', high: 25, low: 17, condition: 'sunny' as const },
-];
-
-const mockChartData = [
-  { name: 'Mon', temp: 24 },
-  { name: 'Tue', temp: 22 },
-  { name: 'Wed', temp: 19 },
-  { name: 'Thu', temp: 21 },
-  { name: 'Fri', temp: 25 },
+// This matches the format the new WeatherChart expects
+const mockForecastList = [
+  { dt: 1769547600, main: { temp: 24, feels_like: 26, humidity: 65, pressure: 1012 }, pop: 0.1, wind: { speed: 12 } },
+  { dt: 1769558400, main: { temp: 26, feels_like: 28, humidity: 60, pressure: 1011 }, pop: 0.0, wind: { speed: 10 } },
+  { dt: 1769569200, main: { temp: 28, feels_like: 30, humidity: 55, pressure: 1010 }, pop: 0.0, wind: { speed: 14 } },
+  { dt: 1769580000, main: { temp: 27, feels_like: 29, humidity: 58, pressure: 1010 }, pop: 0.2, wind: { speed: 11 } },
+  { dt: 1769590800, main: { temp: 23, feels_like: 24, humidity: 70, pressure: 1012 }, pop: 0.4, wind: { speed: 8 } },
+  { dt: 1769601600, main: { temp: 21, feels_like: 21, humidity: 75, pressure: 1013 }, pop: 0.1, wind: { speed: 6 } },
+  { dt: 1769612400, main: { temp: 20, feels_like: 20, humidity: 80, pressure: 1014 }, pop: 0.0, wind: { speed: 5 } },
+  { dt: 1769623200, main: { temp: 19, feels_like: 19, humidity: 82, pressure: 1015 }, pop: 0.0, wind: { speed: 4 } },
 ];
 
 const Dashboard = ({ onLogout }: DashboardProps) => {
   const [weather, setWeather] = useState(mockWeather);
-  const [favorites, setFavorites] = useState(mockFavorites);
-  const [selectedCity, setSelectedCity] = useState<string | null>(null);
-  const [isFavorite, setIsFavorite] = useState(false);
+  const [favorites, setFavorites] = useState([
+    { id: '1', name: 'Tokyo', country: 'Japan', temperature: 18, condition: 'cloudy' as WeatherCondition },
+    { id: '2', name: 'London', country: 'UK', temperature: 12, condition: 'rainy' as WeatherCondition },
+  ]);
   const [isSearching, setIsSearching] = useState(false);
 
-  const getWeatherCondition = useCallback((): 'sunny' | 'rainy' | 'night' | 'stormy' | 'clear' => {
-    if (weather.condition === 'sunny' || weather.condition === 'cloudy') {
-      return 'sunny';
-    } else if (weather.condition === 'rainy' || weather.condition === 'stormy') {
-      return 'rainy';
-    }
+  const getWeatherCondition = useCallback(() => {
+    if (['sunny', 'cloudy'].includes(weather.condition)) return 'sunny';
+    if (['rainy', 'stormy'].includes(weather.condition)) return 'rainy';
     return 'night';
   }, [weather.condition]);
-
-  const handleSearch = (city: string) => {
-    setIsSearching(true);
-    // Simulate API call
-    setTimeout(() => {
-      setWeather({
-        ...mockWeather,
-        city,
-        temperature: Math.floor(Math.random() * 20) + 10,
-        condition: (['sunny', 'rainy', 'cloudy', 'night', 'stormy'] as WeatherCondition[])[Math.floor(Math.random() * 5)],
-      });
-      setIsSearching(false);
-      setIsFavorite(favorites.some(f => f.name.toLowerCase() === city.toLowerCase()));
-    }, 1000);
-  };
-
-  const handleToggleFavorite = () => {
-    if (isFavorite) {
-      setFavorites(favorites.filter(f => f.name !== weather.city));
-    } else {
-      setFavorites([
-        ...favorites,
-        {
-          id: Date.now().toString(),
-          name: weather.city,
-          country: weather.country,
-          temperature: weather.temperature,
-          condition: weather.condition,
-        },
-      ]);
-    }
-    setIsFavorite(!isFavorite);
-  };
-
-  const handleSelectCity = (cityId: string) => {
-    setSelectedCity(cityId);
-    const city = favorites.find(f => f.id === cityId);
-    if (city) {
-      setWeather({
-        ...mockWeather,
-        city: city.name,
-        country: city.country,
-        temperature: city.temperature,
-        condition: city.condition,
-      });
-      setIsFavorite(true);
-    }
-  };
 
   return (
     <div className="min-h-screen">
@@ -142,51 +72,46 @@ const Dashboard = ({ onLogout }: DashboardProps) => {
               <p className="text-xs text-muted-foreground">Atmospheric Portal</p>
             </div>
           </div>
-
-          <button
-            onClick={onLogout}
-            className="p-2 rounded-lg bg-muted/50 hover:bg-destructive/20 hover:text-destructive transition-colors"
-            title="Logout"
-          >
+          <button onClick={onLogout} className="p-2 rounded-lg bg-muted/50 hover:bg-destructive/20 transition-colors" title="Log Out">
             <LogOut className="w-5 h-5" />
           </button>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="pt-20 pb-8 px-4">
+      <main className="pt-24 pb-8 px-4">
         <div className="container mx-auto">
-          {/* Search Bar */}
-          <div className="mb-8 animate-fade-in">
-            <SearchBar onSearch={handleSearch} isLoading={isSearching} />
-          </div>
+          <div className="mb-8"><SearchBar onSearch={() => { }} isLoading={isSearching} /></div>
 
           {/* 3-Column Layout */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Left Sidebar - Favorites */}
-            <div className="lg:col-span-3 order-2 lg:order-1 animate-fade-in" style={{ animationDelay: '100ms' }}>
+
+            {/* Left - Favorites */}
+            <div className="lg:col-span-3">
               <FavoritesSidebar
                 favorites={favorites}
-                selectedCity={selectedCity}
-                onSelectCity={handleSelectCity}
+                selectedCity={null}
+                onSelectCity={() => { }}
+                textColor="text-gray-900"
+                subTextColor="text-gray-500"
               />
             </div>
 
-            {/* Center - Weather Hero */}
-            <div className="lg:col-span-6 order-1 lg:order-2 animate-fade-in" style={{ animationDelay: '200ms' }}>
-              <WeatherHero
-                weather={weather}
-                isFavorite={isFavorite}
-                onToggleFavorite={handleToggleFavorite}
-              />
+            {/* Center - MAIN CHART & METRICS */}
+            <div className="lg:col-span-6 space-y-6">
+              {/* The Temperature Chart */}
+              <WeatherChart data={{ list: mockForecastList }} />
+
+              {/* The Metric Grid (Humidity, Wind, etc.) */}
+              <WeatherMetricsGrid currentData={{
+                main: { humidity: weather.humidity, pressure: weather.pressure },
+                wind: { speed: weather.windSpeed, gust: weather.windGust },
+                visibility: weather.visibility
+              }} />
             </div>
 
-            {/* Right Sidebar - Insights */}
-            <div className="lg:col-span-3 order-3 animate-fade-in" style={{ animationDelay: '300ms' }}>
-              <InsightsSidebar
-                forecast={mockForecast}
-                chartData={mockChartData}
-              />
+            {/* Right - Insights */}
+            <div className="lg:col-span-3">
+              <InsightsSidebar forecast={[]} chartData={[]} />
             </div>
           </div>
         </div>
