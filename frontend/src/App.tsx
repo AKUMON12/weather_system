@@ -341,10 +341,6 @@ function App() {
                         <span className="ml-2 font-mono">{new Date().toLocaleTimeString()}</span>
                       </div>
 
-                      <button onClick={toggleDarkMode} className="p-3 glass-card-subtle hover-lift">
-                        {darkMode ? "🌙" : "☀️"}
-                      </button>
-
                       <button onClick={handleLogout} className="px-6 py-2 bg-destructive/20 border border-destructive/50 text-destructive-foreground rounded-full hover:bg-destructive/40 transition-colors">
                         Logout
                       </button>
