@@ -56,7 +56,12 @@ try {
         database: process.env.DB_NAME,
         waitForConnections: true,
         connectionLimit: 10,
-        queueLimit: 0
+        queueLimit: 0,
+
+        // ADD THIS SECTION BELOW for DEPLOYMENTS that REQUIRE SSL (e.g., Clever Cloud)
+        ssl: {
+            rejectUnauthorized: false
+        }
     });
     console.log('✅ MySQL Connection Pool created successfully.');
 
