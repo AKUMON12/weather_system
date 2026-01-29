@@ -15,7 +15,7 @@ const jwt = require('jsonwebtoken');
 
 // 2. Server Initialization
 const app = express();
-const PORT = process.env.PORT || 5000; // Use port from .env or default to 5000
+const PORT = process.env.PORT; //|| 5000; // Use port from .env or default to 5000
 
 
 // 11. Implementing Middleware (Managing favorite cities)
