@@ -106,5 +106,3 @@ VITE_API_BASE_URL=[https://your-backend-on-render.com](https://your-backend-on-r
 ### **Contact & Support**
 
 *Developed with ❤️ as a modern take on environmental data visualization.*
-
-```
