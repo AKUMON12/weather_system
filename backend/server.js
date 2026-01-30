@@ -35,10 +35,11 @@ const authenticateToken = (req, res, next) => {
 };
 
 // 3. Middleware Configuration
-// CORS: Allows requests from different origins (e.g., frontend running on port 3000)
-app.use(cors()); 
 // JSON Body Parser: Allows Express to read JSON data sent in request bodies
 app.use(express.json());
+// CORS: Allows requests from different origins (e.g., frontend running on port 3000)
+app.use(cors()); 
+
 
 // 4. Database Connection Pool Setup
 /**
@@ -268,6 +269,14 @@ app.delete('/api/favorites/:id', authenticateToken, async (req, res) => {
 });
 // --- END OF FAVORITES ROUTES ---
 
+// Add this to server.js before app.listen
+app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    console.error('❌ BAD JSON RECEIVED:', err.body);
+    return res.status(400).send({ error: "Malformed JSON payload" });
+  }
+  next();
+});
 
 // 6. Start the Server
 app.listen(PORT, () => {

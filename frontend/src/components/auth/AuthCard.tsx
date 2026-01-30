@@ -25,16 +25,20 @@ const AuthCard = ({ onAuthSuccess }: AuthCardProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setMsg(""); // Clear previous errors
+    setMsg("");
 
     const endpoint = isLogin ? "/api/login" : "/api/register";
-    const payload = isLogin 
-      ? { email, password } 
+    const payload = isLogin
+      ? { email, password }
       : { username, email, password };
+
+    // DEBUG LOGS
+    console.log("🚀 URL:", `${API_URL}${endpoint}`);
+    console.log("📦 PAYLOAD:", payload);
 
     try {
       const res = await axios.post(`${API_URL}${endpoint}`, payload);
-      
+
       if (isLogin) {
         localStorage.setItem("token", res.data.token);
         onAuthSuccess(res.data.user);
@@ -44,6 +48,13 @@ const AuthCard = ({ onAuthSuccess }: AuthCardProps) => {
       }
     } catch (err) {
       const axiosError = err as AxiosError<any>;
+      console.error("❌ FULL ERROR:", axiosError);
+
+      // If the response is not JSON, this will fail. Let's catch the raw response text:
+      if (typeof axiosError.response?.data === 'string') {
+        console.log("⚠️ SERVER RETURNED HTML INSTEAD OF JSON:", axiosError.response.data.substring(0, 100));
+      }
+
       setMsg(axiosError.response?.data?.error || "An error occurred");
     } finally {
       setIsLoading(false);
@@ -69,18 +80,16 @@ const AuthCard = ({ onAuthSuccess }: AuthCardProps) => {
         <button
           type="button"
           onClick={() => setIsLogin(true)}
-          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-300 ${
-            isLogin ? 'bg-primary text-primary-foreground shadow-lg' : 'text-muted-foreground hover:text-foreground'
-          }`}
+          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-300 ${isLogin ? 'bg-primary text-primary-foreground shadow-lg' : 'text-muted-foreground hover:text-foreground'
+            }`}
         >
           Sign In
         </button>
         <button
           type="button"
           onClick={() => setIsLogin(false)}
-          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-300 ${
-            !isLogin ? 'bg-primary text-primary-foreground shadow-lg' : 'text-muted-foreground hover:text-foreground'
-          }`}
+          className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-300 ${!isLogin ? 'bg-primary text-primary-foreground shadow-lg' : 'text-muted-foreground hover:text-foreground'
+            }`}
         >
           Register
         </button>
@@ -139,9 +148,8 @@ const AuthCard = ({ onAuthSuccess }: AuthCardProps) => {
 
         {/* Error/Success Message Display */}
         {msg && (
-          <p className={`text-xs text-center p-2 rounded-lg ${
-            msg.includes("Registered") ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"
-          }`}>
+          <p className={`text-xs text-center p-2 rounded-lg ${msg.includes("Registered") ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"
+            }`}>
             {msg}
           </p>
         )}
