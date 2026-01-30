@@ -36,7 +36,17 @@ const authenticateToken = (req, res, next) => {
 
 // 3. Middleware Configuration
 // JSON Body Parser: Allows Express to read JSON data sent in request bodies
+// Add this to server.js
 app.use(express.json());
+
+app.use((err, req, res, next) => {
+  if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
+    console.error('❌ JSON Syntax Error Details:', err.message);
+    console.error('📦 Raw Body causing error:', err.body);
+    return res.status(400).json({ error: "Malformed JSON payload", details: err.message });
+  }
+  next();
+});
 // CORS: Allows requests from different origins (e.g., frontend running on port 3000)
 app.use(cors()); 
 
