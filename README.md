@@ -1,60 +1,48 @@
 # 🌤️ SkyCast OS: Atmospheric Weather Portal
 
-**SkyCast OS** is a premium, full-stack weather dashboard that transforms raw meteorological data into an immersive "Atmospheric Portal." Unlike traditional weather apps, SkyCast leverages interactive background simulations and Glassmorphism design to reflect the environment of the searched location in real-time.
+**SkyCast OS** is a premium, full-stack weather dashboard that transforms raw meteorological data into an immersive "Atmospheric Portal." Built with a cloud-native architecture, SkyCast leverages interactive background simulations and Glassmorphism design to reflect the environment of the searched location in real-time.
 
 ---
 
 ## 📖 Project Overview
 
-SkyCast OS was built to bridge the gap between utility and art. It serves as a comprehensive dashboard where users can manage their personal library of locations while experiencing a UI that shifts its "mood" based on global weather conditions.
+SkyCast OS bridges the gap between utility and art. It serves as a comprehensive dashboard where users manage their personal library of locations while experiencing a UI that shifts its "mood" based on global weather conditions.
 
-### **The Problem**
-
-Most weather applications are static, cluttered with ads, and fail to provide a sensory experience of the location being searched.
-
-### **The Solution**
-
-An "Atmospheric Portal" that uses:
-
-1. **Dynamic Theming:** The entire UI color palette and background animations shift based on live weather data (Clear, Rain, Storm, Snow).
-2. **Cursor Interactivity:** A custom particle system that reacts to mouse movements, simulating wind flow and environmental depth.
-3. **Glassmorphism Architecture:** High-end translucent layers that maintain readability without obscuring the beautiful environmental simulations.
+### **The Architecture**
+The system is distributed across three specialized cloud environments to ensure high availability and performance:
+1. **Frontend:** Hosted on **Vercel** for lightning-fast edge delivery.
+2. **Backend:** Powered by a **Node.js** instance on **Render**.
+3. **Database:** High-performance **MySQL** hosted via **Clever Cloud**.
 
 ---
 
 ## ✨ Key Highlights & Features
 
 ### 🌪️ Immersive Experience
-
-- **Reactive Backgrounds:** A full-screen HTML5 Canvas particle system that swirls and flows in response to your cursor.
-- **Time-Aware Gradients:** UI backgrounds transition naturally from sunrise gold to midnight obsidian based on the target city's local time.
+- **Reactive Backgrounds:** A full-screen HTML5 Canvas particle system that flows in response to cursor movement.
+- **Time-Aware Gradients:** UI palettes transition from sunrise gold to midnight obsidian based on the target city's local time.
+- **Live Sync Indicator:** A real-time fetching state that ensures users know exactly when data is being refreshed.
 
 ### 🔐 Secure User Management
-
 - **JWT Authentication:** Robust login/registration system using JSON Web Tokens and Bcrypt password hashing.
-- **Persistent Sessions:** Stay logged in across refreshes using localized token management.
+- **Persistent Sessions:** Secure token management in `localStorage` to keep users logged in across sessions.
 
 ### 📊 Professional Data Visualization
-
-- **Smart Favorites:** A personalized "Pinned Cities" sidebar allows users to save and track multiple global locations simultaneously.
-- **Interactive Forecasts:** High-contrast Area Charts powered by Recharts, visualizing 5-day temperature trends at a glance.
-
-### 📱 Premium UI/UX
-
-- **Responsive Grid:** A fluid 3-column layout that elegantly collapses into a mobile-friendly "Stack" view.
-- **Apple-Style Aesthetics:** Large border-radii, heavy background blurs, and bold, tracking-heavy typography.
+- **Smart Favorites:** A personalized "Pinned Cities" sidebar allowing users to track multiple global locations.
+- **Trend Analysis:** High-contrast Area Charts powered by **Recharts**, visualizing 5-day temperature fluctuations.
 
 ---
 
-## 🛠️ The MyERN Stack
+## 🛠️ The Tech Stack
 
-| Layer        | Technology                                 |
-| ------------ | ------------------------------------------ |
-| **Frontend** | React 19, Tailwind CSS v3, Axios, Recharts |
-| **Backend**  | Node.js, Express.js                        |
-| **Database** | MySQL (XAMPP/Local Environment)            |
-| **Security** | JWT (JSON Web Tokens), Bcrypt.js           |
-| **API**      | OpenWeatherMap API                         |
+| Layer | Technology |
+| :--- | :--- |
+| **Frontend** | React 19, Tailwind CSS v3, Framer Motion, Recharts |
+| **Backend** | Node.js, Express.js |
+| **Database** | MySQL (Relational Schema) |
+| **Infrastructure** | Vercel (Frontend), Render (Backend), Clever Cloud (DB) |
+| **Security** | JWT, Bcrypt.js, SSL/TLS Encryption |
+| **API** | OpenWeatherMap API |
 
 ---
 
@@ -62,52 +50,61 @@ An "Atmospheric Portal" that uses:
 
 ```text
 weather-system
-├──backend                  # The server-side environment (Node.js/Express) that handles data and security.
-│   ├──package-lock.json    # Locks dependency versions to ensure the server runs the same on every machine.
-│   ├──package.json         # Lists backend dependencies (like Express/Axios) and startup scripts.
-│   └──server.js            # The entry point that connects to the database and provides weather/auth APIs.
-├──frontend                 # The client-side React application that users interact with in the browser.
-│   ├──public               # Static assets (images, icons) that are served directly without being processed.
-│   │   ├──vite.svg         # The default build tool icon.
-│   │   └──weather-sun...   # A custom graphic asset used for the weather dashboard branding.
-│   ├──src                  # The primary source code folder where all React logic and styling live.
-│   │   ├──components       # Reusable UI building blocks used to construct the pages.
-│   │   │   ├──auth         # Components specifically for Login and Registration (e.g., AuthCard).
-│   │   │   ├──backgrounds  # Specialized logic for the animated mesh and atmospheric weather effects.
-│   │   │   ├──dashboard    # Complex parts of the main view (Sidebars, Search bars, and Charts).
-│   │   │   └──ui           # Standardized, low-level design elements (buttons, inputs) from shadcn/ui.
-│   │   ├──hooks            # Custom React functions that handle repetitive logic (like mobile detection).
-│   │   ├──lib              # Utility helper files (like CSS class merging tools).
-│   │   ├──pages            # The "Full Views" that combine components into a single screen (Dashboard, Auth).
-│   │   ├──App.css          # Local styles specifically for the main App component.
-│   │   ├──App.tsx          # The Master Controller that manages routing and user authentication state.
-│   │   ├──index.css        # Global styles, Tailwind directives, and our custom Weather Theme variables.
-│   │   ├──main.tsx         # The technical bridge that renders the React App into the browser's DOM.
-│   │   └──vite-env.d.ts    # TypeScript definitions to ensure the environment variables are recognized.
-│   ├──components.json      # Configuration file for the shadcn/ui library components.
-│   ├──eslint.config.js     # Rules for keeping your code clean and catching syntax errors.
-│   ├──index.html           # The single HTML file where your entire React app is "injected."
-│   ├──package.json         # Lists frontend tools (React, Tailwind, Vite) and build commands.
-│   ├──postcss.config.js    # A tool that transforms your CSS into a format browsers understand.
-│   ├──tailwind.config.ts   # The master design settings for colors, fonts, and custom animations.
-│   ├──tsconfig.json        # Settings for the TypeScript compiler to ensure code type-safety.
-│   ├──vite.config.js       # The configuration for the build tool that runs your local development server.
-│   └──.gitignore           # Tells Git which files (like node_modules) should NOT be uploaded to GitHub.
-└──README.md                # The main documentation file explaining how to install and run the project.
+├── backend                # Express server handling Auth, Weather Caching, and Favorites
+│   ├── server.js          # Entry point with MySQL Connection Pooling & SSL support
+│   └── .env               # (Ignored) Cloud DB credentials and JWT Secrets
+├── frontend               # React/Vite application
+│   ├── src
+│   │   ├── components
+│   │   │   ├── auth       # Registration & Login logic
+│   │   │   ├── backgrounds# Particle system & atmospheric shaders
+│   │   │   ├── dashboard  # Sidebars, Search, and Recharts components
+│   │   │   └── ui         # Shadcn/ui core components
+│   │   ├── pages          # Main views: Dashboard and Auth
+│   │   └── App.tsx        # Authentication state & Route guarding
+│   └── tailwind.config.ts # Custom Glassmorphism & Animation themes
+└── README.md
+
+```
+
+---
+
+## ⚙️ Environment Configuration
+
+To run this project locally, create a `.env` file in both directories:
+
+**Backend `.env**`
+
+```env
+PORT=5000
+DB_HOST=your_clever_cloud_host
+DB_USER=your_username
+DB_PASSWORD=your_password
+DB_NAME=your_db_name
+WEATHER_API_KEY=your_openweather_key
+JWT_SECRET=your_secret_key
+
+```
+
+**Frontend `.env**`
+
+```env
+VITE_API_BASE_URL=[https://your-backend-on-render.com](https://your-backend-on-render.com)
+
 ```
 
 ---
 
 ## 🚀 Future Roadmap
 
-- [ ] **Weather Map Layers:** Integration of precipitation and wind-speed maps.
-- [ ] **Voice Search:** Hands-free weather queries.
-- [ ] **Push Notifications:** Alert users for severe weather changes in their pinned cities.
+* [ ] **Weather Map Layers:** Integration of precipitation and wind-speed maps.
+* [ ] **Multi-Unit Support:** Real-time toggling between Metric and Imperial systems.
+* [ ] **Push Notifications:** Alert users for severe weather changes in pinned cities.
 
 ---
 
 ### **Contact & Support**
 
-_Developed with ❤️ as a modern take on environmental data visualization._
+*Developed with ❤️ as a modern take on environmental data visualization.*
 
----
+```
